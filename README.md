@@ -1,31 +1,40 @@
 # Display SEED Round SLStudio
 
-Čistý projekt pre SLStudio na platforme Seeed Studio Round Display (ESP32-S3).
+Čistý projekt pro SLStudio na platformě Seeed Studio Round Display (ESP32-S3).
 
-## Štruktúra projektu
+## Struktura projektu
 
-- `src/main.cpp` - Hlavný program s inicializáciou displeja a LVGL
-- `src/lv_conf.h` - Konfigurácia LVGL pre round display
-- `platformio.ini` - PlatformIO konfigurácia pre ESP32-S3
+- `src/main.cpp` - Hlavní program s inicializací displeje a LVGL
+- `src/lv_conf.h` - Konfigurace LVGL pro round display
+- `platformio.ini` - PlatformIO konfigurace pro ESP32-S3
 
-## Hardvérové nastavenie
+## Hardwarové nastavení
 
 - Board: Seeed Studio XIAO ESP32-S3
 - Display: Round Display 240x240px (GC9A01)
-- Touch: Kapacitný touch controller
+- Touch: Kapacitní touch controller
 
-## Kompilácia a nahratie
+## Kompilace a nahrání
 
 ```bash
 pio run
 pio run --target upload
 ```
 
-## Použitie
+## Použití
 
-Projekt je pripravený na integráciu UI z SLStudio. Stačí nahrať UI súbory do `src/` adresára a skompilovať.
+Projekt je připravený na integraci UI z SLStudio. Stačí nahrát UI soubory do `src/` adresáře a zkompilovat.
 
-## Pinout
+## MAVLink Zapojení
+
+Pro připojení k flight controlleru:
+
+- Flight Controller TX → Xiao D3 (GPIO3) RX
+- Flight Controller RX → Xiao D5 (GPIO5) TX  
+- GND → GND
+- Baudrate: 57600
+
+## Pinout displeje
 
 - TFT_CS: GPIO2
 - TFT_DC: GPIO4  
