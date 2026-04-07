@@ -78,13 +78,7 @@ void my_touchpad_read(lv_indev_drv_t *indev_driver, lv_indev_data_t *data) {
     chsc6x_read(indev_driver, data);
 }
 
-// Alternative swipe detection using LVGL gestures
-void add_swipe_gestures() {
-    // Add gesture detection to all screens
-    lv_obj_add_event_cb(ui_Screen1, screen_gesture_cb, LV_EVENT_GESTURE, NULL);
-    lv_obj_add_event_cb(ui_Screen2, screen_gesture_cb, LV_EVENT_GESTURE, NULL);
-    lv_obj_add_event_cb(ui_Screen3, screen_gesture_cb, LV_EVENT_GESTURE, NULL);
-}
+
 
 void screen_click_cb(lv_event_t * e) {
     static unsigned long last_click_time = 0;
@@ -710,6 +704,10 @@ void setup() {
     
     // Initialize SLStudio UI
     ui_init();
+    
+    // Set display background to black (prevents white flashes during screen swipes)
+    lv_disp_set_bg_color(lv_disp_get_default(), lv_color_hex(0x000000));
+    lv_disp_set_bg_opa(lv_disp_get_default(), 255);
     
     // Connect switch event callback
     lv_obj_add_event_cb(ui_Switch1, switch_event_cb, LV_EVENT_VALUE_CHANGED, NULL);
