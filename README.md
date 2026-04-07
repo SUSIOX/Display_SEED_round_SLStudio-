@@ -1,6 +1,6 @@
-# Display SEED Round SLStudio
+# SYS EYE
 
-Čistý projekt pro SLStudio na platformě Seeed Studio Round Display (ESP32-S3).
+Projekt i pro SLStudio na platformě Seeed Studio Round Display (ESP32-S3).
 
 ## Struktura projektu
 
