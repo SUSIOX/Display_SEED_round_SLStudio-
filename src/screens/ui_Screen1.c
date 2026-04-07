@@ -11,7 +11,7 @@ lv_obj_t *uic_Label5;
 lv_obj_t *uic_Switch1;
 lv_obj_t *uic_ImgButton2;
 lv_obj_t *uic_Screen1;
-lv_obj_t *ui_Screen1 = NULL;lv_obj_t *ui_ImgButton2 = NULL;lv_obj_t *ui_Spinner1 = NULL;lv_obj_t *ui_Switch1 = NULL;lv_obj_t *ui_Label1 = NULL;lv_obj_t *ui_Label5 = NULL;
+lv_obj_t *ui_Screen1 = NULL;lv_obj_t *ui_ImgButton2 = NULL;lv_obj_t *ui_EyeClosedLayer = NULL;lv_obj_t *ui_Spinner1 = NULL;lv_obj_t *ui_Switch1 = NULL;lv_obj_t *ui_Label1 = NULL;lv_obj_t *ui_Label5 = NULL;
 
 static lv_point_t ui_Screen1_press_point;
 static bool ui_Screen1_press_active = false;
@@ -66,15 +66,26 @@ void ui_Screen1_screen_init(void)
     ui_Screen1 = lv_obj_create(NULL);
     lv_obj_clear_flag( ui_Screen1, LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_SCROLL_ELASTIC | LV_OBJ_FLAG_SCROLL_MOMENTUM | LV_OBJ_FLAG_SCROLL_CHAIN );    /// Flags
 
-    ui_ImgButton2 = lv_imgbtn_create(ui_Screen1);
-    lv_imgbtn_set_src(ui_ImgButton2, LV_IMGBTN_STATE_RELEASED, NULL, &ui_img_ocix02_mono_png, NULL);
-    lv_imgbtn_set_src(ui_ImgButton2, LV_IMGBTN_STATE_PRESSED, NULL, &ui_img_ocix01_c_png, NULL);
+    // Base container handling clicks and gestures
+    ui_ImgButton2 = lv_obj_create(ui_Screen1);
+    lv_obj_remove_style_all(ui_ImgButton2);
     lv_obj_set_width( ui_ImgButton2, 240);
     lv_obj_set_height( ui_ImgButton2, 240);
     lv_obj_set_x( ui_ImgButton2, 0 );
     lv_obj_set_y( ui_ImgButton2, 0 );
     lv_obj_set_align( ui_ImgButton2, LV_ALIGN_CENTER );
-    lv_obj_add_flag( ui_ImgButton2, LV_OBJ_FLAG_GESTURE_BUBBLE );
+    lv_obj_add_flag( ui_ImgButton2, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_GESTURE_BUBBLE );
+
+    // Bottom layer: Open eye
+    lv_obj_t* eye_open = lv_img_create(ui_ImgButton2);
+    lv_img_set_src(eye_open, &ui_img_ocix02_mono_png);
+    lv_obj_align(eye_open, LV_ALIGN_CENTER, 0, 0);
+
+    // Top layer: Closed eye (crossfaded via blink_controller)
+    ui_EyeClosedLayer = lv_img_create(ui_ImgButton2);
+    lv_img_set_src(ui_EyeClosedLayer, &ui_img_ocix01_c_png);
+    lv_obj_align(ui_EyeClosedLayer, LV_ALIGN_CENTER, 0, 0);
+    lv_obj_set_style_img_opa(ui_EyeClosedLayer, 0, LV_PART_MAIN); // Start open
 
     ui_Spinner1 = lv_spinner_create(ui_Screen1,1000,90);
     lv_obj_set_width( ui_Spinner1, 250);

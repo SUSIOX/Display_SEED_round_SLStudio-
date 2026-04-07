@@ -13,6 +13,7 @@
 #include "xiao_pinout.h"
 #include "mavlink_data_types.h"
 #include "MeshCoreTelemetry.h"
+#include "blink_controller.h"
 
 // MAVLink Serial pins - GPIO3/1 dedicated to MAVLink (free from display conflicts)
 #define MAVLINK_RX_PIN 3    // D2 = GPIO3 (RX) - free pin
@@ -53,6 +54,9 @@ unsigned long time_offset = 0;  // Offset for custom time setting
 // ImgButton2 reset time variables
 unsigned long button_press_times[5] = {0, 0, 0, 0, 0};
 int button_press_count = 0;
+
+// Blink Controller
+BlinkController blink_ctrl;
 
 // Display callback
 void my_disp_flush(lv_disp_drv_t *disp, const lv_area_t *area, lv_color_t *color_p) {
@@ -712,6 +716,9 @@ void setup() {
     // Connect switch event callback
     lv_obj_add_event_cb(ui_Switch1, switch_event_cb, LV_EVENT_VALUE_CHANGED, NULL);
     
+    // Initialize Blink Controller
+    blink_init(&blink_ctrl, millis() / 1000.0);
+    
     // Connect ImgButton2 time reset callback
     lv_obj_add_event_cb(ui_ImgButton2, imgbutton2_press_cb, LV_EVENT_CLICKED, NULL);
     
@@ -782,6 +789,13 @@ void loop() {
             );
         }
         xSemaphoreGive(mavlink_mutex);
+    }
+    
+    // Update realistic eye blink animation
+    if (ui_EyeClosedLayer) {
+        blink_update(&blink_ctrl, millis() / 1000.0);
+        lv_opa_t opa = (lv_opa_t)(blink_get_alpha(&blink_ctrl) * 255.0);
+        lv_obj_set_style_img_opa(ui_EyeClosedLayer, opa, LV_PART_MAIN);
     }
     
     // Debug: Show all received message IDs
