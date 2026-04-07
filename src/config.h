@@ -39,6 +39,15 @@
 #define UI_SCREEN5_INACTIVITY_MS 180000  // 3 minutes: Servo Control -> Battery
 #define UI_SCREEN2_INACTIVITY_MS 30000   // 30 seconds: Battery -> Home (Screen 1)
 
+// Blackout (Power Saving) Settings
+#define UI_BLACKOUT_TIMEOUT_MS       300000  // 5 minutes inactivity (ground)
+#define UI_FLIGHT_BLACKOUT_TIMEOUT_MS 5000   // 5 seconds inactivity (flight)
+#define UI_LONG_PRESS_BLACKOUT_MS    5000    // 5 seconds long press on Home screen
+
+// Flight Detection Thresholds
+#define FLIGHT_DETECTION_ALT_MM      5000    // 5 meters relative altitude
+#define FLIGHT_DETECTION_SPEED_MMS   3000    // 3 m/s ground speed
+
 // ==========================================
 // SAFETY SETTINGS
 // ==========================================

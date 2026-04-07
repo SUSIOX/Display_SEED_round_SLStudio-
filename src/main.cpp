@@ -59,6 +59,41 @@ void my_disp_flush(lv_disp_drv_t *disp, const lv_area_t *area, lv_color_t *color
     lv_disp_flush_ready(disp);
 }
 
+// Power Management
+bool is_power_save = false;
+unsigned long touch_start_time = 0;
+
+bool is_in_flight() {
+    bool flight = false;
+    if (xSemaphoreTake(mavlink_mutex, 0) == pdTRUE) {
+        if (mavlink_data.data_valid) {
+            // Flight detection: Alt > 5m OR speed > 3m/s
+            if (abs(mavlink_data.altitude_relative) > FLIGHT_DETECTION_ALT_MM) flight = true;
+            
+            float speed_sq = pow(mavlink_data.gps_vx, 2) + pow(mavlink_data.gps_vy, 2);
+            if (speed_sq > pow(FLIGHT_DETECTION_SPEED_MMS, 2)) flight = true;
+        }
+        xSemaphoreGive(mavlink_mutex);
+    }
+    return flight;
+}
+
+void set_power_state(bool save_mode) {
+    if (is_power_save == save_mode) return;
+    
+    is_power_save = save_mode;
+    if (save_mode) {
+        Serial.println("[POWER] Entering BLACKOUT mode");
+        digitalWrite(TFT_BL, LOW);           // Backlight OFF
+        setCpuFrequencyMhz(80);              // Reduce CPU frequency to 80MHz
+    } else {
+        Serial.println("[POWER] Waking up to NORMAL mode");
+        setCpuFrequencyMhz(240);             // Restore CPU frequency
+        digitalWrite(TFT_BL, HIGH);          // Backlight ON
+        last_interaction_time = millis();    // Reset timer on wake
+    }
+}
+
 // Function declarations
 void screen_click_cb(lv_event_t * e);
 void meshcore_telemetry_task(void *pvParameters); // Forward declaration
@@ -67,9 +102,28 @@ void meshcore_telemetry_task(void *pvParameters); // Forward declaration
 void my_touchpad_read(lv_indev_drv_t *indev_driver, lv_indev_data_t *data) {
     chsc6x_read(indev_driver, data);
     
-    // Reset inactivity timer on any touch activity
     if (data->state == LV_INDEV_STATE_PR) {
+        // Wake up if in power save
+        if (is_power_save) {
+            set_power_state(false);
+            data->state = LV_INDEV_STATE_REL; // Prevents accidental click on wake
+            return;
+        }
+
         last_interaction_time = millis();
+        
+        // Manual Blackout: 5s Long press on Home Screen
+        if (lv_scr_act() == ui_Screen1) {
+            if (touch_start_time == 0) {
+                touch_start_time = millis();
+            } else if (millis() - touch_start_time > UI_LONG_PRESS_BLACKOUT_MS) {
+                set_power_state(true);
+                touch_start_time = 0;
+                data->state = LV_INDEV_STATE_REL;
+            }
+        }
+    } else {
+        touch_start_time = 0;
     }
 }
 
@@ -922,7 +976,7 @@ void loop() {
         if (inactivity_duration >= UI_SCREEN5_INACTIVITY_MS) {
             Serial.println("[TIMER] Screen 5 inactivity -> Screen 2");
             _ui_screen_change(&ui_Screen2, LV_SCR_LOAD_ANIM_FADE_ON, 500, 0, &ui_Screen2_screen_init);
-            last_interaction_time = millis(); // Reset to prevent rapid double-switch
+            last_interaction_time = millis(); 
         }
     } 
     else if (active_screen == ui_Screen2) { // Battery Screen
@@ -933,9 +987,25 @@ void loop() {
         }
     }
 
-    // LVGL timer handler - Core 0 handles all UI
-    lv_timer_handler();
-    delay(5);
+    // --- BLACKOUT LOGIC (Power Save) ---
+    if (!is_power_save) {
+        bool in_flight = is_in_flight();
+        if (in_flight && inactivity_duration > UI_FLIGHT_BLACKOUT_TIMEOUT_MS) {
+            Serial.println("[POWER] Flight inactivity -> Blackout");
+            set_power_state(true);
+        } else if (!in_flight && inactivity_duration > UI_BLACKOUT_TIMEOUT_MS) {
+            Serial.println("[POWER] Ground inactivity -> Blackout");
+            set_power_state(true);
+        }
+    }
+
+    // LVGL timer handler - only update UI if not in blackout
+    if (!is_power_save) {
+        lv_timer_handler();
+        delay(5);
+    } else {
+        delay(100); // Save processing in blackout
+    }
     
     // Read ESP32 internal temperature every 5 seconds
     static unsigned long last_temp_read = 0;
