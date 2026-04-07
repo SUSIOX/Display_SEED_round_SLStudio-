@@ -70,41 +70,12 @@ void my_disp_flush(lv_disp_drv_t *disp, const lv_area_t *area, lv_color_t *color
 }
 
 // Function declarations
-void screen_gesture_cb(lv_event_t * e);
 void screen_click_cb(lv_event_t * e);
-void add_swipe_gestures();
 void meshcore_telemetry_task(void *pvParameters); // Forward declaration
 
 // Touch callback using Seeed Studio approach (I2C polling - no GPIO44 interrupt)
 void my_touchpad_read(lv_indev_drv_t *indev_driver, lv_indev_data_t *data) {
     chsc6x_read(indev_driver, data);
-    
-    // Check for swipe gestures
-    static lv_point_t last_point = {0, 0};
-    static bool touch_started = false;
-    static unsigned long touch_start_time = 0;
-    
-    if (data->state == LV_INDEV_STATE_PR) {
-        if (!touch_started) {
-            last_point.x = data->point.x;
-            last_point.y = data->point.y;
-            touch_started = true;
-            touch_start_time = millis();
-        }
-    } else if (data->state == LV_INDEV_STATE_REL && touch_started) {
-        unsigned long touch_duration = millis() - touch_start_time;
-        int dx = data->point.x - last_point.x;
-        int dy = data->point.y - last_point.y;
-        
-        // Check for upward swipe (dy < -50 and touch duration < 500ms)
-        if (dy < -50 && abs(dx) < 50 && touch_duration < 500) {
-            // Swipe up detected - switch to Screen3
-            lv_scr_load_anim(ui_Screen3, LV_SCR_LOAD_ANIM_MOVE_TOP, 300, 0, false);
-            Serial.println("Swipe up - Switching to MAVLink Monitor");
-        }
-        
-        touch_started = false;
-    }
 }
 
 // Alternative swipe detection using LVGL gestures
@@ -134,27 +105,6 @@ void screen_click_cb(lv_event_t * e) {
     last_click_time = current_time;
 }
 
-void screen_gesture_cb(lv_event_t * e) {
-    lv_dir_t dir = lv_indev_get_gesture_dir(lv_indev_get_act());
-    
-    if (dir == LV_DIR_TOP) {
-        // Swipe up - go to Screen3
-        lv_scr_load_anim(ui_Screen3, LV_SCR_LOAD_ANIM_MOVE_TOP, 300, 0, false);
-        Serial.println("Gesture swipe up - Switching to MAVLink Monitor");
-    } else if (dir == LV_DIR_BOTTOM) {
-        // Swipe down - go back to Screen1
-        lv_scr_load_anim(ui_Screen1, LV_SCR_LOAD_ANIM_MOVE_BOTTOM, 300, 0, false);
-        Serial.println("Gesture swipe down - Switching to Screen1");
-    } else if (dir == LV_DIR_LEFT) {
-        // Swipe left - go to Screen2
-        lv_scr_load_anim(ui_Screen2, LV_SCR_LOAD_ANIM_MOVE_LEFT, 300, 0, false);
-        Serial.println("Gesture swipe left - Switching to Screen2");
-    } else if (dir == LV_DIR_RIGHT) {
-        // Swipe right - go to Screen1
-        lv_scr_load_anim(ui_Screen1, LV_SCR_LOAD_ANIM_MOVE_RIGHT, 300, 0, false);
-        Serial.println("Gesture swipe right - Switching to Screen1");
-    }
-}
 
 // Switch event callback - controls GPIO1 and RELAY_PIN (GPIO5)
 void switch_event_cb(lv_event_t * e) {
@@ -766,9 +716,6 @@ void setup() {
     
     // Connect ImgButton2 time reset callback
     lv_obj_add_event_cb(ui_ImgButton2, imgbutton2_press_cb, LV_EVENT_CLICKED, NULL);
-    
-    // Add swipe gestures to all screens
-    add_swipe_gestures();
     
     // Create Communication tasks on Core 0
     xTaskCreatePinnedToCore(
