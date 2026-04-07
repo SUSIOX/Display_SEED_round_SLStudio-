@@ -8,7 +8,7 @@
 // Display pins (SPI)
 #define TFT_CS          2   // D1
 #define TFT_DC          4   // D3
-#define TFT_BL          6   // D5 (shared with I2C SCL!)
+#define TFT_BL          43  // D6 (on newer versions)
 #define TFT_SCLK        7   // D8
 #define TFT_MOSI        9   // D10
 

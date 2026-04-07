@@ -85,10 +85,13 @@ void set_power_state(bool save_mode) {
     if (save_mode) {
         Serial.println("[POWER] Entering BLACKOUT mode");
         digitalWrite(TFT_BL, LOW);           // Backlight OFF
+        tft.writecommand(0x10);              // Display SLEEP
         setCpuFrequencyMhz(80);              // Reduce CPU frequency to 80MHz
     } else {
         Serial.println("[POWER] Waking up to NORMAL mode");
         setCpuFrequencyMhz(240);             // Restore CPU frequency
+        tft.writecommand(0x11);              // Display WAKEUP
+        delay(120);                          // Required delay after sleep out
         digitalWrite(TFT_BL, HIGH);          // Backlight ON
         last_interaction_time = millis();    // Reset timer on wake
     }
