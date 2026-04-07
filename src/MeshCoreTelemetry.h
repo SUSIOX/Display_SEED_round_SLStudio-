@@ -2,7 +2,7 @@
 #define MESHCORE_TELEMETRY_H
 
 #include <Arduino.h>
-#include "xiao_pinout.h"
+#include "config.h"
 #include "mavlink_data_types.h"
 
 class MeshCoreTelemetry {

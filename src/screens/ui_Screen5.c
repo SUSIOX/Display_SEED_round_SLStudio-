@@ -5,6 +5,7 @@
 #include <string.h>
 #include <Arduino.h>
 #include <MAVLink.h>
+#include "config.h"
 #include "../ui.h"
 #include "ui_Screen5.h"
 
@@ -53,9 +54,6 @@ static void ui_event_Screen5(lv_event_t *e);
 static void servo_slider_cb(lv_event_t *e);
 static void drop_gear_btn_cb(lv_event_t *e);
 static void motor_btn_cb(lv_event_t *e);
-static void safety_btn_cb(lv_event_t *e);
-static void stop_btn_cb(lv_event_t *e);
-static void update_safety_state(void);
 static void update_motor_timers(void);
 static void stop_all_motors(void);
 static void center_servos(void);
@@ -84,7 +82,6 @@ static void update_servo_label(lv_obj_t *label, int16_t value) {
 }
 
 static void set_all_controls_enabled(bool enabled) {
-    // Servo sliders - add/remove disabled flag
     if (ui_ServoSlider1) {
         if (enabled) lv_obj_clear_state(ui_ServoSlider1, LV_STATE_DISABLED);
         else lv_obj_add_state(ui_ServoSlider1, LV_STATE_DISABLED);
@@ -97,23 +94,10 @@ static void set_all_controls_enabled(bool enabled) {
         if (enabled) lv_obj_clear_state(ui_DropGearBtn, LV_STATE_DISABLED);
         else lv_obj_add_state(ui_DropGearBtn, LV_STATE_DISABLED);
     }
-    
-    // Motor buttons
     for (int i = 0; i < 4; i++) {
         if (ui_MotorBtn[i]) {
             if (enabled) lv_obj_clear_state(ui_MotorBtn[i], LV_STATE_DISABLED);
             else lv_obj_add_state(ui_MotorBtn[i], LV_STATE_DISABLED);
-        }
-    }
-    
-    // Visual feedback
-    if (ui_SafetyBtn) {
-        if (enabled) {
-            lv_obj_set_style_bg_color(ui_SafetyBtn, lv_color_hex(0xFF0000), LV_PART_MAIN);
-            lv_label_set_text(ui_SafetyLabel, "LOCK");
-        } else {
-            lv_obj_set_style_bg_color(ui_SafetyBtn, lv_color_hex(0x00FF00), LV_PART_MAIN);
-            lv_label_set_text(ui_SafetyLabel, "UNLOCKED");
         }
     }
 }
@@ -156,9 +140,7 @@ static void drop_gear_btn_cb(lv_event_t *e) {
 
 static void motor_btn_cb(lv_event_t *e) {
     lv_obj_t *btn = lv_event_get_target(e);
-    // SAFETY BYPASSED FOR TESTING - was: if (!safety_unlocked) return;
     
-    // Find which motor
     int motor_id = -1;
     for (int i = 0; i < 4; i++) {
         if (btn == ui_MotorBtn[i]) {
@@ -168,44 +150,25 @@ static void motor_btn_cb(lv_event_t *e) {
     }
     if (motor_id < 0) return;
     
-    // Start motor test (10% throttle for 5 seconds)
-    motor_running[motor_id] = true;
-    motor_start_time[motor_id] = millis();
-    
-    // Visual feedback
-    lv_obj_set_style_bg_color(ui_MotorBtn[motor_id], lv_color_hex(0xFF5500), LV_PART_MAIN);
-    lv_label_set_text(ui_MotorLabel[motor_id], "RUN");
-    
-    // Send MAVLink command (10% = 1100μs, 5 seconds)
-    send_mavlink_motor_test(motor_id + 1, 10, 5);
-}
-
-/*
-// SAFETY BUTTON HANDLER - REMOVED FOR TESTING
-static void safety_btn_cb(lv_event_t *e) {
-    (void)e;
-    
-    if (safety_unlocked) {
-        // Lock
-        safety_unlocked = false;
-        set_all_controls_enabled(false);
+    if (motor_running[motor_id]) {
+        // Toggle OFF: Stop motor if already running
+        motor_running[motor_id] = false;
+        lv_obj_set_style_bg_color(ui_MotorBtn[motor_id], lv_color_hex(0x2a2a2a), LV_PART_MAIN);
+        char buf[8];
+        sprintf(buf, "M%d", motor_id + 1);
+        lv_label_set_text(ui_MotorLabel[motor_id], buf);
+        send_mavlink_motor_test(motor_id + 1, 0, 0);
     } else {
-        // Unlock for 30 seconds
-        safety_unlocked = true;
-        safety_unlock_time = millis();
-        set_all_controls_enabled(true);
+        // Toggle ON: Start motor test
+        motor_running[motor_id] = true;
+        motor_start_time[motor_id] = millis();
+        lv_obj_set_style_bg_color(ui_MotorBtn[motor_id], lv_color_hex(0xFF5500), LV_PART_MAIN);
+        lv_label_set_text(ui_MotorLabel[motor_id], "RUN");
+        send_mavlink_motor_test(motor_id + 1, MOTOR_TEST_THROTTLE_PCT, MOTOR_TEST_DURATION_MS / 1000);
     }
 }
-*/
 
-/*
-// STOP BUTTON HANDLER - REMOVED FOR TESTING
-static void stop_btn_cb(lv_event_t *e) {
-    (void)e;
-    stop_all_motors();
-    center_servos();
-}
-*/
+// Removed safety and stop buttons as per user request to keep UI clean
 
 static void stop_all_motors(void) {
     for (int i = 0; i < 4; i++) {
@@ -242,36 +205,19 @@ static void center_servos(void) {
     update_servo_label(ui_ServoValue2, 50);
 }
 
-static void update_safety_state(void) {
-    if (safety_unlocked && (millis() - safety_unlock_time > 30000)) {
-        // Auto-lock after 30 seconds
-        safety_unlocked = false;
-        set_all_controls_enabled(false);
-        
-        // Also stop all motors and center servos
-        stop_all_motors();
-        center_servos();
-    }
-}
+// Removed automatic safety state management
 
 static void update_motor_timers(void) {
     uint32_t now = millis();
-    
     for (int i = 0; i < 4; i++) {
-        if (motor_running[i] && (now - motor_start_time[i] >= 5000)) {
-            // Stop motor after 5 seconds
+        if (motor_running[i] && (now - motor_start_time[i] >= MOTOR_TEST_DURATION_MS)) {
             motor_running[i] = false;
-            
-            if (ui_MotorBtn[i]) {
-                lv_obj_set_style_bg_color(ui_MotorBtn[i], lv_color_hex(0x2a2a2a), LV_PART_MAIN);
-            }
+            if (ui_MotorBtn[i]) lv_obj_set_style_bg_color(ui_MotorBtn[i], lv_color_hex(0x2a2a2a), LV_PART_MAIN);
             if (ui_MotorLabel[i]) {
                 char buf[8];
                 sprintf(buf, "M%d", i + 1);
                 lv_label_set_text(ui_MotorLabel[i], buf);
             }
-            
-            // Send stop command
             send_mavlink_motor_test(i + 1, 0, 0);
         }
     }
@@ -385,56 +331,17 @@ void ui_Screen5_screen_init(void) {
         lv_obj_center(ui_MotorLabel[i]);
     }
     
-/*
-    // Safety button - REMOVED FOR TESTING
-    ui_SafetyBtn = lv_btn_create(ui_Panel5);
-    lv_obj_set_size(ui_SafetyBtn, 130, 30);
-    lv_obj_align(ui_SafetyBtn, LV_ALIGN_BOTTOM_LEFT, 10, -5);
-    lv_obj_set_style_bg_color(ui_SafetyBtn, lv_color_hex(0x00FF00), LV_PART_MAIN);
-    lv_obj_add_event_cb(ui_SafetyBtn, safety_btn_cb, LV_EVENT_CLICKED, NULL);
+    // Enable Screen 5 swipe navigation
+    lv_obj_add_event_cb(ui_Screen5, ui_event_Screen5, LV_EVENT_ALL, NULL);
     
-    ui_SafetyLabel = lv_label_create(ui_SafetyBtn);
-    lv_label_set_text(ui_SafetyLabel, "UNLOCKED");
-    lv_obj_set_style_text_color(ui_SafetyLabel, lv_color_hex(0x000000), LV_PART_MAIN);
-    lv_obj_set_style_text_font(ui_SafetyLabel, &lv_font_montserrat_14, LV_PART_MAIN);
-    lv_obj_center(ui_SafetyLabel);
-*/
-    
-/*
-    // STOP button - REMOVED FOR TESTING
-    ui_StopBtn = lv_btn_create(ui_Panel5);
-    lv_obj_set_size(ui_StopBtn, 70, 30);
-    lv_obj_align(ui_StopBtn, LV_ALIGN_BOTTOM_RIGHT, -10, -5);
-    lv_obj_set_style_bg_color(ui_StopBtn, lv_color_hex(0xFF0000), LV_PART_MAIN);
-    lv_obj_add_event_cb(ui_StopBtn, stop_btn_cb, LV_EVENT_CLICKED, NULL);
-    
-    lv_obj_t *stop_label = lv_label_create(ui_StopBtn);
-    lv_label_set_text(stop_label, "STOP");
-    lv_obj_set_style_text_color(stop_label, lv_color_hex(0xFFFFFF), LV_PART_MAIN);
-    lv_obj_set_style_text_font(stop_label, &lv_font_montserrat_14, LV_PART_MAIN);
-    lv_obj_center(stop_label);
-*/
-    
-    // Add event handler for swipe - DISABLED FOR TESTING
-    // lv_obj_add_event_cb(ui_Screen5, ui_event_Screen5, LV_EVENT_ALL, NULL);
-    
-    // SAFETY BYPASSED FOR TESTING
-    // Initial state: locked
-    // safety_unlocked = false;
-    // set_all_controls_enabled(false);
-    
-    // Testing: unlocked by default
+    // Controls are always enabled (Safety lock removed)
     safety_unlocked = true;
     set_all_controls_enabled(true);
     
-    // Enable event bubble for all children (fixes touch issues)
     ui_enable_event_bubble_recursive(ui_Screen5);
-    
     ui_Screen5_load_time = lv_tick_get();
 }
 
-/*
-// Swipe event handler - DISABLED FOR TESTING
 static void ui_event_Screen5(lv_event_t *e) {
     lv_event_code_t event_code = lv_event_get_code(e);
     lv_indev_t *indev = lv_indev_get_act();
@@ -459,21 +366,17 @@ static void ui_event_Screen5(lv_event_t *e) {
         
         if (LV_ABS(dy) > 40 && LV_ABS(dy) > LV_ABS(dx)) {
             if (dy > 0) {
-                // Swipe down -> Screen1
                 _ui_screen_change(&ui_Screen1, LV_SCR_LOAD_ANIM_MOVE_BOTTOM, 300, 0, &ui_Screen1_screen_init);
             } else {
-                // Swipe up -> Screen4
                 _ui_screen_change(&ui_Screen4, LV_SCR_LOAD_ANIM_MOVE_TOP, 300, 0, &ui_Screen4_screen_init);
             }
         }
     }
 }
-*/
 
 // Public function to update timers (call from main loop)
 void ui_Screen5_update_timers(void) {
     if (!ui_Screen5) return;
-    update_safety_state();
     update_motor_timers();
 }
 

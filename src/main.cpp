@@ -10,27 +10,10 @@
 #include "screens/ui_Screen5.h"
 #include "lv_xiao_round_screen.h"
 #include <MAVLink.h>
-#include "xiao_pinout.h"
+#include "config.h"
 #include "mavlink_data_types.h"
 #include "MeshCoreTelemetry.h"
 #include "blink_controller.h"
-
-// MAVLink Serial pins - GPIO3/1 dedicated to MAVLink (free from display conflicts)
-#define MAVLINK_RX_PIN 3    // D2 = GPIO3 (RX) - free pin
-#define MAVLINK_TX_PIN 1    // D0 = GPIO1 (TX) - free pin
-#define MAVLINK_BAUD 57600
-
-// Trigger pin for AirMobis switch (external input)
-#define TRIGGER_PIN 10      // GPIO10 (D9) - free input pin
-
-// Relay pin (controlled by Switch1 on Screen1)
-// WARNING: GPIO5=I2C SDA, GPIO6=I2C SCL/BL - NEVER use these as GPIO!
-// Only free accessible connector pin: GPIO8 (D9) = MISO, not used by TFT
-#define RELAY_PIN 8         // GPIO8 (D9) - only free connector pin for relay
-
-// ========== DUAL-CORE ARCHITECTURE ==========
-// Core 0: LVGL UI, Touch (I2C polling), Display
-// Core 1: MAVLink continuous reading on GPIO44/43
 
 // Shared data protected by mutex
 SemaphoreHandle_t mavlink_mutex = NULL;
@@ -50,6 +33,9 @@ static lv_color_t buf[2][240 * 10];
 // RTC Variables
 bool rtc_initialized = false;
 unsigned long time_offset = 0;  // Offset for custom time setting
+
+// Inactivity tracking
+unsigned long last_interaction_time = 0;
 
 // ImgButton2 reset time variables
 unsigned long button_press_times[5] = {0, 0, 0, 0, 0};
@@ -80,6 +66,11 @@ void meshcore_telemetry_task(void *pvParameters); // Forward declaration
 // Touch callback using Seeed Studio approach (I2C polling - no GPIO44 interrupt)
 void my_touchpad_read(lv_indev_drv_t *indev_driver, lv_indev_data_t *data) {
     chsc6x_read(indev_driver, data);
+    
+    // Reset inactivity timer on any touch activity
+    if (data->state == LV_INDEV_STATE_PR) {
+        last_interaction_time = millis();
+    }
 }
 
 
@@ -649,12 +640,12 @@ void setup() {
     delay(100);
     Serial.println("[CORE0] Serial1 initialized");
 
-    // Initialize Serial2 (Extra Serial 3) on bottom JTAG pads for MeshCore Telemetry
+    // Initialize Serial2 for MeshCore Telemetry
     Serial.printf("[CORE0] Initializing Serial2 on RX=%d, TX=%d\n",
-                  XIAO_EXTRA_SERIAL_RX, XIAO_EXTRA_SERIAL_TX);
-    Serial2.begin(115200, SERIAL_8N1, XIAO_EXTRA_SERIAL_RX, XIAO_EXTRA_SERIAL_TX);
-    meshcore.begin(&Serial2);
-    Serial.println("[CORE0] MeshCore Telemetry initialized (NMEA format)");
+                  MESHCORE_RX_PIN, MESHCORE_TX_PIN);
+    Serial2.begin(MESHCORE_BAUD, SERIAL_8N1, MESHCORE_RX_PIN, MESHCORE_TX_PIN);
+    meshcore.begin(&Serial2, MESHCORE_BAUD);
+    Serial.println("[CORE0] MeshCore Telemetry initialized");
 
     // Initialize display
     Serial.println("[CORE0] Initializing display...");
@@ -712,6 +703,9 @@ void setup() {
     // Set display background to black (prevents white flashes during screen swipes)
     lv_disp_set_bg_color(lv_disp_get_default(), lv_color_hex(0x000000));
     lv_disp_set_bg_opa(lv_disp_get_default(), 255);
+    
+    // Initialize interaction timer
+    last_interaction_time = millis();
     
     // Connect switch event callback
     lv_obj_add_event_cb(ui_Switch1, switch_event_cb, LV_EVENT_VALUE_CHANGED, NULL);
@@ -792,9 +786,20 @@ void loop() {
     }
     
     // Update realistic eye blink animation
-    if (ui_EyeClosedLayer) {
+    if (ui_EyeClosedLayer && ui_ImgButton2) {
         blink_update(&blink_ctrl, millis() / 1000.0);
-        lv_opa_t opa = (lv_opa_t)(blink_get_alpha(&blink_ctrl) * 255.0);
+        
+        lv_opa_t opa;
+        if (lv_obj_has_state(ui_ImgButton2, LV_STATE_PRESSED)) {
+            // Force eye closed when user is touching it
+            opa = 255;
+            // Optional: reset blink state so it doesn't blink immediately after release
+            // blink_init(&blink_ctrl, millis() / 1000.0); 
+        } else {
+            // Use realistic blink animation
+            opa = (lv_opa_t)(blink_get_alpha(&blink_ctrl) * 255.0);
+        }
+        
         lv_obj_set_style_img_opa(ui_EyeClosedLayer, opa, LV_PART_MAIN);
     }
     
@@ -908,6 +913,25 @@ void loop() {
 
     // Update Screen5 servo/motor timers
     ui_Screen5_update_timers();
+
+    // --- AUTO-NAVIGATION (Inactivity Timeouts) ---
+    unsigned long inactivity_duration = millis() - last_interaction_time;
+    lv_obj_t * active_screen = lv_scr_act();
+
+    if (active_screen == ui_Screen5) { // Servo Control Screen
+        if (inactivity_duration >= UI_SCREEN5_INACTIVITY_MS) {
+            Serial.println("[TIMER] Screen 5 inactivity -> Screen 2");
+            _ui_screen_change(&ui_Screen2, LV_SCR_LOAD_ANIM_FADE_ON, 500, 0, &ui_Screen2_screen_init);
+            last_interaction_time = millis(); // Reset to prevent rapid double-switch
+        }
+    } 
+    else if (active_screen == ui_Screen2) { // Battery Screen
+        if (inactivity_duration >= UI_SCREEN2_INACTIVITY_MS) {
+            Serial.println("[TIMER] Screen 2 inactivity -> Screen 1");
+            _ui_screen_change(&ui_Screen1, LV_SCR_LOAD_ANIM_FADE_ON, 500, 0, &ui_Screen1_screen_init);
+            last_interaction_time = millis();
+        }
+    }
 
     // LVGL timer handler - Core 0 handles all UI
     lv_timer_handler();
