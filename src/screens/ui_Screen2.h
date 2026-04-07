@@ -19,6 +19,16 @@ extern lv_obj_t *ui_Colorwheel1;
 extern lv_obj_t *ui_Label2;
 extern lv_obj_t *ui_Label3;
 extern lv_obj_t *ui_Label4;
+// GPS sub-screen objects
+extern lv_obj_t *ui_Screen2_GPS_Panel;
+extern lv_obj_t *ui_Screen2_GPS_Lat;
+extern lv_obj_t *ui_Screen2_GPS_Lon;
+extern lv_obj_t *ui_Screen2_GPS_Alt;
+extern lv_obj_t *ui_Screen2_GPS_Sats;
+extern lv_obj_t *ui_Screen2_GPS_Fix;
+extern lv_obj_t *ui_Screen2_ToggleBtn;
+// Function to update GPS display
+void update_screen2_gps(int32_t lat, int32_t lon, int32_t alt, uint8_t satellites, uint8_t fix_type);
 // CUSTOM VARIABLES
 extern lv_obj_t *uic_Screen2;
 

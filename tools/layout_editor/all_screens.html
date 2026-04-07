@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SLStudio Layout Editor - All Screens</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #1a1a1a;
+            color: #fff;
+            display: flex;
+            height: 100vh;
+        }
+        .sidebar {
+            width: 320px;
+            background: #2a2a2a;
+            padding: 15px;
+            overflow-y: auto;
+            border-right: 1px solid #444;
+        }
+        .canvas-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+        }
+        .tabs {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 15px;
+        }
+        .tab {
+            padding: 10px 20px;
+            background: #333;
+            border: none;
+            color: #fff;
+            cursor: pointer;
+            border-radius: 5px 5px 0 0;
+            font-weight: bold;
+        }
+        .tab.active {
+            background: #00ff00;
+            color: #000;
+        }
+        .tab:hover {
+            background: #444;
+        }
+        .tab.active:hover {
+            background: #00cc00;
+        }
+        .display-container {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #222;
+            border-radius: 10px;
+            padding: 20px;
+        }
+        .display {
+            width: 240px;
+            height: 240px;
+            background: #000;
+            border: 3px solid #444;
+            border-radius: 50%;
+            position: relative;
+            overflow: hidden;
+            clip-path: circle(50%);
+        }
+        .display-clip {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            clip-path: circle(50%);
+            pointer-events: none;
+        }
+        .display-inner {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 240px;
+            height: 240px;
+            pointer-events: none;
+        }
+        .element {
+            position: absolute;
+            cursor: move;
+            user-select: none;
+            pointer-events: auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            border: 1px dashed rgba(255,255,255,0.3);
+        }
+        .element.selected {
+            border: 2px solid #00ff00;
+            z-index: 100;
+        }
+        .element.dragging {
+            opacity: 0.7;
+            z-index: 1000;
+        }
+        .slider { background: #333; border-radius: 8px; }
+        .btn { background: #2a2a2a; border-radius: 4px; color: #fff; }
+        .label { background: transparent; color: #fff; font-size: 11px; }
+        .title { color: #00ff00; font-weight: bold; }
+        .imgbtn { background: #1a1a1a; border: 1px solid #555; }
+        .spinner { background: repeating-conic-gradient(#222 0deg 10deg, #333 10deg 20deg); border-radius: 50%; }
+        .switch { background: #444; border-radius: 15px; }
+        .colorwheel { background: conic-gradient(red, yellow, lime, cyan, blue, magenta, red); border-radius: 50%; }
+        .canvas { background: #111; border: 1px solid #333; }
+        .panel { background: rgba(255,255,255,0.05); border: 1px dashed #555; }
+        
+        h2 {
+            font-size: 14px;
+            margin-bottom: 10px;
+            color: #00ff00;
+        }
+        .control-group {
+            margin-bottom: 12px;
+            padding: 10px;
+            background: #333;
+            border-radius: 4px;
+        }
+        .control-group label {
+            display: block;
+            font-size: 11px;
+            margin-bottom: 4px;
+            color: #aaa;
+        }
+        input[type="number"], input[type="text"] {
+            width: 100%;
+            padding: 5px;
+            background: #1a1a1a;
+            border: 1px solid #555;
+            color: #fff;
+            border-radius: 3px;
+            font-size: 12px;
+        }
+        button {
+            padding: 8px 12px;
+            background: #00ff00;
+            color: #000;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+        button:hover {
+            background: #00cc00;
+        }
+        .element-list {
+            margin-top: 15px;
+        }
+        .element-item {
+            padding: 6px;
+            background: #333;
+            margin-bottom: 3px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 11px;
+        }
+        .element-item:hover {
+            background: #444;
+        }
+        .element-item.selected {
+            background: #00ff00;
+            color: #000;
+        }
+        #output {
+            margin-top: 15px;
+            padding: 10px;
+            background: #1a1a1a;
+            border: 1px solid #444;
+            border-radius: 3px;
+            font-family: monospace;
+            font-size: 10px;
+            max-height: 150px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+        .screen-desc {
+            font-size: 11px;
+            color: #888;
+            margin-bottom: 10px;
+            padding: 5px;
+            background: #222;
+            border-radius: 3px;
+        }
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <h2 id="screen-title">Screen1 Editor</h2>
+        <div class="screen-desc" id="screen-desc">Main screen with logo, spinner and switch</div>
+        
+        <div class="control-group">
+            <label>Selected: <span id="sel-name">none</span></label>
+        </div>
+        
+        <div class="control-group">
+            <label>X Position</label>
+            <input type="number" id="pos-x" min="-120" max="240">
+            <label>Y Position</label>
+            <input type="number" id="pos-y" min="-120" max="240">
+            <label>Width</label>
+            <input type="number" id="size-w" min="10" max="250">
+            <label>Height</label>
+            <input type="number" id="size-h" min="10" max="250">
+        </div>
+        
+        <div class="control-group">
+            <label>Text / Variable Name</label>
+            <input type="text" id="elem-text">
+        </div>
+        
+        <button onclick="generateCode()">Generate C Code</button>
+        <button onclick="resetCurrentScreen()" style="background: #ff5500;">Reset Current</button>
+        
+        <div class="element-list" id="element-list"></div>
+        
+        <div id="output"></div>
+    </div>
+    
+    <div class="canvas-area">
+        <div class="tabs">
+            <button class="tab active" onclick="switchScreen(1)">Screen1</button>
+            <button class="tab" onclick="switchScreen(2)">Screen2</button>
+            <button class="tab" onclick="switchScreen(3)">Screen3</button>
+            <button class="tab" onclick="switchScreen(4)">Screen4</button>
+            <button class="tab" onclick="switchScreen(5)">Screen5</button>
+        </div>
+        <div class="display-container">
+            <div class="display" id="display">
+                <div class="display-inner" id="canvas"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Default layouts for all screens
+        const screenDefaults = {
+            1: [
+                { id: 'ImgButton2', type: 'imgbtn', text: 'Logo', x: 11, y: -8, w: 248, h: 246, align: 'LV_ALIGN_CENTER' },
+                { id: 'Spinner1', type: 'spinner', text: '', x: 0, y: 0, w: 250, h: 250, align: 'LV_ALIGN_CENTER' },
+                { id: 'Switch1', type: 'switch', text: '', x: 0, y: 80, w: 137, h: 30, align: 'LV_ALIGN_CENTER' },
+                { id: 'Label1', type: 'label', text: 'AirMobis', x: -3, y: 80, w: 80, h: 20, color: '#000000', align: 'LV_ALIGN_CENTER' },
+                { id: 'Label5', type: 'label', text: 'hh:mm:ss', x: -1, y: 50, w: 70, h: 20, color: '#000000', align: 'LV_ALIGN_CENTER' },
+            ],
+            2: [
+                { id: 'Colorwheel1', type: 'colorwheel', text: '', x: -1, y: -3, w: 200, h: 200, align: 'LV_ALIGN_CENTER' },
+                { id: 'Label2', type: 'label', text: '-- V', x: 1, y: -8, w: 50, h: 20, color: '#FFFFFF', align: 'LV_ALIGN_CENTER' },
+                { id: 'Label3', type: 'label', text: '--%', x: 1, y: -52, w: 40, h: 20, color: '#FFFFFF', align: 'LV_ALIGN_CENTER' },
+                { id: 'Label4', type: 'label', text: '-- min', x: 1, y: 37, w: 50, h: 20, color: '#FFFFFF', align: 'LV_ALIGN_CENTER' },
+            ],
+            3: [
+                { id: 'Panel3', type: 'panel', text: 'Main Panel', x: 20, y: 0, w: 200, h: 240, align: 'LV_ALIGN_CENTER' },
+                { id: 'LabelTitle3', type: 'title', text: 'SysCom', x: 80, y: 10, w: 60, h: 20, color: '#00ff00' },
+                { id: 'BtnMAVLink', type: 'btn', text: 'MAVLink', x: 25, y: 35, w: 180, h: 40, color: '#ffffff' },
+                { id: 'BtnBattery', type: 'btn', text: 'Battery', x: 25, y: 80, w: 180, h: 40, color: '#ffff00' },
+                { id: 'BtnSystem', type: 'btn', text: 'System', x: 25, y: 125, w: 180, h: 40, color: '#00ffff' },
+                { id: 'BtnGPS', type: 'btn', text: 'GPS', x: 25, y: 170, w: 180, h: 40, color: '#ffffff' },
+                { id: 'BtnReboot', type: 'btn', text: 'Reboot', x: 25, y: 215, w: 180, h: 40, color: '#ff0000' },
+                { id: 'GPSPanel', type: 'panel', text: 'GPS Panel', x: 20, y: -10, w: 200, h: 180, align: 'LV_ALIGN_CENTER' },
+            ],
+            4: [
+                { id: 'title', type: 'title', text: 'Attitude / IMU', x: 0, y: 18, w: 100, h: 20, color: '#00ff00', align: 'LV_ALIGN_TOP_MID' },
+                { id: 'canvas', type: 'canvas', text: 'Horizon', x: 0, y: 0, w: 200, h: 200, align: 'LV_ALIGN_CENTER' },
+                { id: 'aircraft_l', type: 'label', text: '', x: -15, y: 0, w: 25, h: 4, color: '#FFFF00', align: 'LV_ALIGN_CENTER' },
+                { id: 'aircraft_r', type: 'label', text: '', x: 15, y: 0, w: 25, h: 4, color: '#FFFF00', align: 'LV_ALIGN_CENTER' },
+                { id: 'aircraft_dot', type: 'label', text: '', x: 0, y: 0, w: 8, h: 8, color: '#FFFF00', align: 'LV_ALIGN_CENTER' },
+                { id: 'roll_label', type: 'label', text: 'R:0.0', x: 30, y: -50, w: 50, h: 20, color: '#ffffff', align: 'LV_ALIGN_BOTTOM_LEFT' },
+                { id: 'pitch_label', type: 'label', text: 'P:0.0', x: 0, y: -50, w: 50, h: 20, color: '#ffffff', align: 'LV_ALIGN_BOTTOM_MID' },
+                { id: 'yaw_label', type: 'label', text: 'Y:0.0', x: -30, y: -50, w: 50, h: 20, color: '#ffffff', align: 'LV_ALIGN_BOTTOM_RIGHT' },
+                { id: 'alt_label', type: 'label', text: 'A:0m', x: 30, y: 55, w: 50, h: 20, color: '#000000', align: 'LV_ALIGN_TOP_LEFT' },
+                { id: 'hdg_label', type: 'label', text: 'H:0', x: -30, y: 55, w: 40, h: 20, color: '#000000', align: 'LV_ALIGN_TOP_RIGHT' },
+            ],
+            5: [
+                { id: 'title', type: 'title', text: 'SERVO TEST', x: 80, y: 5, w: 80, h: 20, color: '#00ff00' },
+                { id: 'label1', type: 'label', text: 'AIL L:', x: 24, y: 30, w: 40, h: 15 },
+                { id: 'slider1', type: 'slider', text: '', x: 62, y: 30, w: 90, h: 15 },
+                { id: 'value1', type: 'label', text: '50%', x: 155, y: 30, w: 30, h: 15, color: '#00ff00' },
+                { id: 'label2', type: 'label', text: 'AIL R:', x: 23, y: 55, w: 40, h: 15 },
+                { id: 'slider2', type: 'slider', text: '', x: 62, y: 55, w: 90, h: 15 },
+                { id: 'value2', type: 'label', text: '50%', x: 155, y: 55, w: 30, h: 15, color: '#00ff00' },
+                { id: 'dropgear', type: 'btn', text: 'DROP: CLOSED', x: 30, y: 80, w: 180, h: 25 },
+                { id: 'motortitle', type: 'label', text: 'MOTOR TEST (5s)', x: 70, y: 116, w: 100, h: 20, color: '#ffff00' },
+                { id: 'm1', type: 'btn', text: 'M1', x: 15, y: 137, w: 90, h: 35 },
+                { id: 'm2', type: 'btn', text: 'M2', x: 115, y: 137, w: 90, h: 35 },
+                { id: 'm3', type: 'btn', text: 'M3', x: 45, y: 175, w: 60, h: 35 },
+                { id: 'm4', type: 'btn', text: 'M4', x: 115, y: 175, w: 60, h: 35 },
+            ]
+        };
+
+        const screenDescriptions = {
+            1: "Main screen: Logo, MAVLink spinner, trigger switch, time display",
+            2: "Battery screen: Colorwheel gauge, voltage, percentage, time remaining",
+            3: "System menu: MAVLink, Battery, System info, GPS, Reboot buttons + GPS panel",
+            4: "Attitude display: Horizon canvas, aircraft symbol, roll/pitch/yaw labels, alt/heading",
+            5: "Servo test: Aileron sliders, DropGear button, motor test buttons (M1-M4)"
+        };
+
+        let currentScreen = 1;
+        let elements = JSON.parse(JSON.stringify(screenDefaults[1]));
+        let selectedId = null;
+        let dragOffset = { x: 0, y: 0 };
+        let isDragging = false;
+
+        function switchScreen(n) {
+            currentScreen = n;
+            elements = JSON.parse(JSON.stringify(screenDefaults[n]));
+            selectedId = null;
+            
+            // Update tabs
+            document.querySelectorAll('.tab').forEach((t, i) => {
+                t.classList.toggle('active', i === n - 1);
+            });
+            
+            // Update sidebar
+            document.getElementById('screen-title').textContent = `Screen${n} Editor`;
+            document.getElementById('screen-desc').textContent = screenDescriptions[n];
+            document.getElementById('sel-name').textContent = 'none';
+            ['pos-x', 'pos-y', 'size-w', 'size-h', 'elem-text'].forEach(id => {
+                document.getElementById(id).value = '';
+            });
+            
+            renderElements();
+        }
+
+        function renderElements() {
+            const canvas = document.getElementById('canvas');
+            canvas.innerHTML = '';
+            
+            elements.forEach(el => {
+                const div = document.createElement('div');
+                div.className = `element ${el.type}`;
+                div.id = `el-${el.id}`;
+                
+                // Convert LVGL coordinates to HTML coordinates
+                let htmlX = el.x;
+                let htmlY = el.y;
+                
+                if (el.align === 'LV_ALIGN_CENTER') {
+                    // CENTER: x,y is offset from center (120,120)
+                    // HTML: x,y is top-left corner
+                    htmlX = 120 + el.x - el.w / 2;
+                    htmlY = 120 + el.y - el.h / 2;
+                } else if (el.align === 'LV_ALIGN_TOP_MID') {
+                    // TOP_MID: x,y is offset from top-middle (120,0)
+                    htmlX = 120 + el.x - el.w / 2;
+                    htmlY = el.y;
+                } else if (el.align === 'LV_ALIGN_BOTTOM_LEFT') {
+                    // BOTTOM_LEFT: x from left, y from bottom
+                    htmlX = el.x;
+                    htmlY = 240 + el.y - el.h;
+                } else if (el.align === 'LV_ALIGN_BOTTOM_MID') {
+                    htmlX = 120 + el.x - el.w / 2;
+                    htmlY = 240 + el.y - el.h;
+                } else if (el.align === 'LV_ALIGN_BOTTOM_RIGHT') {
+                    htmlX = 240 + el.x - el.w;
+                    htmlY = 240 + el.y - el.h;
+                } else if (el.align === 'LV_ALIGN_TOP_RIGHT') {
+                    htmlX = 240 + el.x - el.w;
+                    htmlY = el.y;
+                }
+                // LV_ALIGN_TOP_LEFT is default (no conversion needed)
+                
+                div.style.left = htmlX + 'px';
+                div.style.top = htmlY + 'px';
+                div.style.width = el.w + 'px';
+                div.style.height = el.h + 'px';
+                if (el.color) div.style.color = el.color;
+                if (el.type === 'colorwheel') {
+                    div.style.borderRadius = '50%';
+                }
+                div.textContent = el.text;
+                
+                div.addEventListener('mousedown', (e) => startDrag(e, el.id));
+                div.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    selectElement(el.id);
+                });
+                
+                canvas.appendChild(div);
+            });
+            
+            updateElementList();
+        }
+
+        function updateElementList() {
+            const list = document.getElementById('element-list');
+            list.innerHTML = '<label style="color: #00ff00; margin-bottom: 8px; display: block; font-size: 12px;">Elements:</label>';
+            
+            elements.forEach(el => {
+                const item = document.createElement('div');
+                item.className = 'element-item';
+                if (el.id === selectedId) item.classList.add('selected');
+                item.textContent = `${el.id} (${el.type})`;
+                item.onclick = () => selectElement(el.id);
+                list.appendChild(item);
+            });
+        }
+
+        function selectElement(id) {
+            selectedId = id;
+            const el = elements.find(e => e.id === id);
+            if (!el) return;
+            
+            document.querySelectorAll('.element').forEach(e => e.classList.remove('selected'));
+            document.getElementById(`el-${id}`)?.classList.add('selected');
+            
+            document.getElementById('sel-name').textContent = id;
+            document.getElementById('pos-x').value = el.x;
+            document.getElementById('pos-y').value = el.y;
+            document.getElementById('size-w').value = el.w;
+            document.getElementById('size-h').value = el.h;
+            document.getElementById('elem-text').value = el.text;
+            
+            updateElementList();
+        }
+
+        function startDrag(e, id) {
+            isDragging = true;
+            selectElement(id);
+            const el = elements.find(e => e.id === id);
+            dragOffset.x = e.clientX - el.x;
+            dragOffset.y = e.clientY - el.y;
+            document.getElementById(`el-${id}`).classList.add('dragging');
+        }
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isDragging || !selectedId) return;
+            
+            const el = elements.find(e => e.id === selectedId);
+            el.x = Math.round(e.clientX - dragOffset.x);
+            el.y = Math.round(e.clientY - dragOffset.y);
+            
+            const div = document.getElementById(`el-${selectedId}`);
+            div.style.left = el.x + 'px';
+            div.style.top = el.y + 'px';
+            
+            document.getElementById('pos-x').value = el.x;
+            document.getElementById('pos-y').value = el.y;
+        });
+
+        document.addEventListener('mouseup', () => {
+            if (isDragging && selectedId) {
+                document.getElementById(`el-${selectedId}`)?.classList.remove('dragging');
+            }
+            isDragging = false;
+        });
+
+        ['pos-x', 'pos-y', 'size-w', 'size-h'].forEach(id => {
+            document.getElementById(id).addEventListener('input', (e) => {
+                if (!selectedId) return;
+                const el = elements.find(e => e.id === selectedId);
+                const val = parseInt(e.target.value) || 0;
+                
+                if (id === 'pos-x') el.x = val;
+                else if (id === 'pos-y') el.y = val;
+                else if (id === 'size-w') el.w = val;
+                else if (id === 'size-h') el.h = val;
+                
+                const div = document.getElementById(`el-${selectedId}`);
+                if (id === 'pos-x') div.style.left = val + 'px';
+                else if (id === 'pos-y') div.style.top = val + 'px';
+                else if (id === 'size-w') div.style.width = val + 'px';
+                else if (id === 'size-h') div.style.height = val + 'px';
+            });
+        });
+
+        document.getElementById('elem-text').addEventListener('input', (e) => {
+            if (!selectedId) return;
+            const el = elements.find(e => e.id === selectedId);
+            el.text = e.target.value;
+            document.getElementById(`el-${selectedId}`).textContent = el.text;
+        });
+
+        function generateCode() {
+            let code = `// Screen${currentScreen} layout - generated from SLStudio Layout Editor\n`;
+            code += `// Copy into ui_Screen${currentScreen}.c/.cpp\n\n`;
+            
+            elements.forEach(el => {
+                const align = el.align || 'LV_ALIGN_TOP_LEFT';
+                
+                switch(currentScreen) {
+                    case 1:
+                        if (el.id === 'ImgButton2') {
+                            code += `// Logo Image Button\n`;
+                            code += `lv_obj_set_size(ui_ImgButton2, ${el.w}, ${el.h});\n`;
+                            code += `lv_obj_set_x(ui_ImgButton2, ${el.x});\n`;
+                            code += `lv_obj_set_y(ui_ImgButton2, ${el.y});\n\n`;
+                        } else if (el.id === 'Spinner1') {
+                            code += `// MAVLink Spinner\n`;
+                            code += `lv_obj_set_size(ui_Spinner1, ${el.w}, ${el.h});\n\n`;
+                        } else if (el.id === 'Switch1') {
+                            code += `// Trigger Switch\n`;
+                            code += `lv_obj_set_size(ui_Switch1, ${el.w}, ${el.h});\n`;
+                            code += `lv_obj_set_x(ui_Switch1, ${el.x});\n`;
+                            code += `lv_obj_set_y(ui_Switch1, ${el.y});\n\n`;
+                        } else if (el.id.startsWith('Label')) {
+                            code += `// ${el.text} Label\n`;
+                            code += `lv_obj_set_x(ui_${el.id}, ${el.x});\n`;
+                            code += `lv_obj_set_y(ui_${el.id}, ${el.y});\n\n`;
+                        }
+                        break;
+                    case 2:
+                        code += `// ${el.id}\n`;
+                        if (el.type === 'colorwheel') {
+                            code += `lv_obj_set_size(ui_Colorwheel1, ${el.w}, ${el.h});\n`;
+                            code += `lv_obj_set_x(ui_Colorwheel1, ${el.x});\n`;
+                            code += `lv_obj_set_y(ui_Colorwheel1, ${el.y});\n\n`;
+                        } else {
+                            code += `lv_obj_set_x(ui_${el.id}, ${el.x});\n`;
+                            code += `lv_obj_set_y(ui_${el.id}, ${el.y});\n\n`;
+                        }
+                        break;
+                    case 3:
+                        if (el.id === 'Panel3') {
+                            code += `// Main Panel\n`;
+                            code += `lv_obj_set_size(ui_Panel3, ${el.w}, ${el.h});\n\n`;
+                        } else if (el.id === 'LabelTitle3') {
+                            code += `// Title\n`;
+                            code += `lv_obj_align(ui_LabelTitle3, ${align}, ${el.x}, ${el.y});\n\n`;
+                        } else if (el.id === 'GPSPanel') {
+                            code += `// GPS Panel (hidden by default)\n`;
+                            code += `lv_obj_set_size(ui_Screen3_GPS_Panel, ${el.w}, ${el.h});\n`;
+                            code += `lv_obj_align(ui_Screen3_GPS_Panel, ${align}, ${el.x}, ${el.y});\n\n`;
+                        } else if (el.id.startsWith('Btn')) {
+                            const btnName = el.id.replace('Btn', '').toLowerCase();
+                            code += `// ${el.text} Button\n`;
+                            code += `lv_obj_set_size(ui_${el.id}, ${el.w}, ${el.h});\n`;
+                            code += `lv_obj_align(ui_${el.id}, ${align}, ${el.x}, ${el.y});\n\n`;
+                        }
+                        break;
+                    case 4:
+                        if (el.id === 'canvas') {
+                            code += `// Horizon Canvas\n`;
+                            code += `lv_obj_center(s4_canvas);\n\n`;
+                        } else if (el.id === 'title') {
+                            code += `// Title\n`;
+                            code += `lv_obj_align(title, ${align}, ${el.x}, ${el.y});\n\n`;
+                        } else if (el.id.startsWith('aircraft')) {
+                            code += `// Aircraft symbol - ${el.id}\n`;
+                            code += `lv_obj_align(s4_${el.id}, ${align}, ${el.x}, ${el.y});\n\n`;
+                        } else if (el.id.endsWith('_label')) {
+                            const labelName = el.id.replace('_label', '');
+                            code += `// ${labelName.toUpperCase()} label\n`;
+                            code += `lv_obj_align(s4_${el.id}, ${align}, ${el.x}, ${el.y});\n\n`;
+                        }
+                        break;
+                    case 5:
+                        if (el.id === 'title') {
+                            code += `// Title\n`;
+                            code += `lv_obj_align(title, ${align}, ${el.x}, ${el.y});\n\n`;
+                        } else if (el.id.startsWith('slider')) {
+                            const num = el.id.replace('slider', '');
+                            code += `// Servo Slider ${num}\n`;
+                            code += `lv_obj_set_size(ui_ServoSlider${num}, ${el.w}, ${el.h});\n`;
+                            code += `lv_obj_align(ui_ServoSlider${num}, ${align}, ${el.x}, ${el.y});\n\n`;
+                        } else if (el.id.startsWith('value')) {
+                            const num = el.id.replace('value', '');
+                            code += `// Value label ${num}\n`;
+                            code += `lv_obj_align(ui_ServoValue${num}, ${align}, ${el.x}, ${el.y});\n\n`;
+                        } else if (el.id === 'dropgear') {
+                            code += `// DropGear Button\n`;
+                            code += `lv_obj_set_size(ui_DropGearBtn, ${el.w}, ${el.h});\n`;
+                            code += `lv_obj_align(ui_DropGearBtn, ${align}, ${el.x}, ${el.y});\n\n`;
+                        } else if (el.id === 'motortitle') {
+                            code += `// Motor Title\n`;
+                            code += `lv_obj_align(motor_title, ${align}, ${el.x}, ${el.y});\n\n`;
+                        } else if (el.id.startsWith('m')) {
+                            const idx = parseInt(el.id.replace('m', '')) - 1;
+                            code += `// Motor ${idx + 1} Button\n`;
+                            code += `lv_obj_set_size(ui_MotorBtn[${idx}], ${el.w}, ${el.h});\n`;
+                            code += `lv_obj_align(ui_MotorBtn[${idx}], ${align}, ${el.x}, ${el.y});\n\n`;
+                        } else {
+                            code += `// ${el.id}\n`;
+                            code += `lv_obj_align(${el.id}, ${align}, ${el.x}, ${el.y});\n\n`;
+                        }
+                        break;
+                }
+            });
+            
+            document.getElementById('output').textContent = code;
+        }
+
+        function resetCurrentScreen() {
+            elements = JSON.parse(JSON.stringify(screenDefaults[currentScreen]));
+            selectedId = null;
+            document.getElementById('sel-name').textContent = 'none';
+            ['pos-x', 'pos-y', 'size-w', 'size-h', 'elem-text'].forEach(id => {
+                document.getElementById(id).value = '';
+            });
+            renderElements();
+        }
+
+        // Initialize
+        renderElements();
+    </script>
+</body>
+</html>

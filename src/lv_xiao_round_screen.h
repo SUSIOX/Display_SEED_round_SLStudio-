@@ -35,20 +35,25 @@ void lv_xiao_disp_init(void)
     xiao_disp_init();
 }
 
+// Pure I2C polling - no GPIO44 interrupt needed (for dual-core)
 bool chsc6x_is_pressed(void)
 {
-    if(digitalRead(TOUCH_INT) != LOW) {
-        delay(1);
-        if(digitalRead(TOUCH_INT) != LOW)
-            return false;
+    // Read directly from I2C to check if touch is active
+    uint8_t temp[CHSC6X_READ_POINT_LEN] = {0};
+    uint8_t read_len = Wire.requestFrom(CHSC6X_I2C_ID, CHSC6X_READ_POINT_LEN);
+    
+    if(read_len == CHSC6X_READ_POINT_LEN) {
+        Wire.readBytes(temp, read_len);
+        return (temp[0] == 0x01); // Touch active when first byte is 0x01
     }
-    return true;
+    return false;
 }
 
 void lv_xiao_touch_init(void)
 {
-    Wire.begin();
-    pinMode(TOUCH_INT, INPUT_PULLUP);
+    // Wire.begin() is called in main setup() BEFORE MAVLink task
+    // This avoids conflicts between I2C and Serial1 on GPIO44/43
+    // Note: GPIO44 interrupt NOT used - Core 0 uses GPIO44 for MAVLink UART
 }
 
 void chsc6x_convert_xy(uint8_t *x, uint8_t *y)

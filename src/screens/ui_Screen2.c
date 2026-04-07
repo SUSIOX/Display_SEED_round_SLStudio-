@@ -4,17 +4,51 @@
 // Project name: SquareLine_Project
 
 #include "../ui.h"
+#include "ui_Screen3.h"
+#include "ui_Screen4.h"
 
 lv_obj_t *uic_Screen2;
 lv_obj_t *ui_Screen2 = NULL;lv_obj_t *ui_Colorwheel1 = NULL;lv_obj_t *ui_Label2 = NULL;lv_obj_t *ui_Label3 = NULL;lv_obj_t *ui_Label4 = NULL;
-// event funtions
-void ui_event_Screen2( lv_event_t * e) {
-    lv_event_code_t event_code = lv_event_get_code(e);
+static lv_point_t ui_Screen2_press_point;
+static bool ui_Screen2_press_active = false;
+static uint32_t ui_Screen2_load_time = 0;
 
-if ( event_code == LV_EVENT_GESTURE &&  lv_indev_get_gesture_dir(lv_indev_get_act()) == LV_DIR_LEFT  ) {
-lv_indev_wait_release(lv_indev_get_act());
-      _ui_screen_change( &ui_Screen1, LV_SCR_LOAD_ANIM_FADE_OUT, 500, 0, &ui_Screen1_screen_init);
+static void ui_enable_event_bubble_recursive(lv_obj_t *parent) {
+    uint32_t child_count = lv_obj_get_child_cnt(parent);
+    for (uint32_t i = 0; i < child_count; i++) {
+        lv_obj_t *child = lv_obj_get_child(parent, i);
+        lv_obj_add_flag(child, LV_OBJ_FLAG_EVENT_BUBBLE);
+        ui_enable_event_bubble_recursive(child);
+    }
 }
+
+void ui_event_Screen2(lv_event_t *e) {
+    lv_event_code_t event_code = lv_event_get_code(e);
+    lv_indev_t *indev = lv_indev_get_act();
+    lv_point_t point;
+    if (!indev) return;
+    if ((lv_tick_get() - ui_Screen2_load_time) < 400) return;
+    if (event_code == LV_EVENT_PRESSED) {
+        lv_indev_get_point(indev, &ui_Screen2_press_point);
+        ui_Screen2_press_active = true;
+    }
+    if (event_code == LV_EVENT_PRESS_LOST) {
+        ui_Screen2_press_active = false;
+    }
+    if (event_code == LV_EVENT_RELEASED && ui_Screen2_press_active) {
+        int dx, dy;
+        ui_Screen2_press_active = false;
+        lv_indev_get_point(indev, &point);
+        dx = point.x - ui_Screen2_press_point.x;
+        dy = point.y - ui_Screen2_press_point.y;
+        if (LV_ABS(dy) > 40 && LV_ABS(dy) > LV_ABS(dx)) {
+            if (dy > 0) {
+                _ui_screen_change(&ui_Screen3, LV_SCR_LOAD_ANIM_MOVE_BOTTOM, 300, 0, &ui_Screen3_screen_init);
+            } else {
+                _ui_screen_change(&ui_Screen1, LV_SCR_LOAD_ANIM_MOVE_TOP, 500, 0, &ui_Screen1_screen_init);
+            }
+        }
+    }
 }
 
 // build funtions
@@ -32,6 +66,7 @@ lv_obj_set_height( ui_Colorwheel1, 200);
 lv_obj_set_x( ui_Colorwheel1, -1 );
 lv_obj_set_y( ui_Colorwheel1, -3 );
 lv_obj_set_align( ui_Colorwheel1, LV_ALIGN_CENTER );
+lv_obj_add_flag( ui_Colorwheel1, LV_OBJ_FLAG_GESTURE_BUBBLE );
 
 ui_Label2 = lv_label_create(ui_Screen2);
 lv_obj_set_width( ui_Label2, LV_SIZE_CONTENT);  /// 1
@@ -39,9 +74,10 @@ lv_obj_set_height( ui_Label2, LV_SIZE_CONTENT);   /// 1
 lv_obj_set_x( ui_Label2, 1 );
 lv_obj_set_y( ui_Label2, -8 );
 lv_obj_set_align( ui_Label2, LV_ALIGN_CENTER );
-lv_label_set_text(ui_Label2,"Vbat");
+lv_label_set_text(ui_Label2,"-- V");
 lv_obj_set_style_text_color(ui_Label2, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT );
 lv_obj_set_style_text_opa(ui_Label2, 255, LV_PART_MAIN| LV_STATE_DEFAULT);
+lv_obj_add_flag( ui_Label2, LV_OBJ_FLAG_GESTURE_BUBBLE );
 
 ui_Label3 = lv_label_create(ui_Screen2);
 lv_obj_set_width( ui_Label3, LV_SIZE_CONTENT);  /// 1
@@ -49,9 +85,10 @@ lv_obj_set_height( ui_Label3, LV_SIZE_CONTENT);   /// 1
 lv_obj_set_x( ui_Label3, 1 );
 lv_obj_set_y( ui_Label3, -52 );
 lv_obj_set_align( ui_Label3, LV_ALIGN_CENTER );
-lv_label_set_text(ui_Label3,"Vpercent");
+lv_label_set_text(ui_Label3,"--%");
 lv_obj_set_style_text_color(ui_Label3, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT );
 lv_obj_set_style_text_opa(ui_Label3, 255, LV_PART_MAIN| LV_STATE_DEFAULT);
+lv_obj_add_flag( ui_Label3, LV_OBJ_FLAG_GESTURE_BUBBLE );
 
 ui_Label4 = lv_label_create(ui_Screen2);
 lv_obj_set_width( ui_Label4, LV_SIZE_CONTENT);  /// 1
@@ -59,11 +96,15 @@ lv_obj_set_height( ui_Label4, LV_SIZE_CONTENT);   /// 1
 lv_obj_set_x( ui_Label4, 1 );
 lv_obj_set_y( ui_Label4, 37 );
 lv_obj_set_align( ui_Label4, LV_ALIGN_CENTER );
-lv_label_set_text(ui_Label4,"Flighttime");
+lv_label_set_text(ui_Label4,"-- min");
 lv_obj_set_style_text_color(ui_Label4, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT );
 lv_obj_set_style_text_opa(ui_Label4, 255, LV_PART_MAIN| LV_STATE_DEFAULT);
+lv_obj_add_flag( ui_Label4, LV_OBJ_FLAG_GESTURE_BUBBLE );
 
 lv_obj_add_event_cb(ui_Screen2, ui_event_Screen2, LV_EVENT_ALL, NULL);
+ui_enable_event_bubble_recursive(ui_Screen2);
+
+ui_Screen2_load_time = lv_tick_get();
 uic_Screen2 = ui_Screen2;
 
 }
@@ -80,4 +121,10 @@ ui_Label2= NULL;
 ui_Label3= NULL;
 ui_Label4= NULL;
 
+}
+
+// Placeholder - GPS moved to Screen3
+void update_screen2_gps(int32_t lat, int32_t lon, int32_t alt, uint8_t satellites, uint8_t fix_type) {
+    (void)lat; (void)lon; (void)alt; (void)satellites; (void)fix_type;
+    // GPS display now on Screen3
 }

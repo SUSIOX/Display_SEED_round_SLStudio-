@@ -11,19 +11,28 @@
 #endif
 
 #include "lvgl.h"
+#include <stdint.h>
 
 ///////////////////// VARIABLES ////////////////////
-lv_obj_t *ui_Screen3;
-lv_obj_t *ui_Panel3;
-lv_obj_t *ui_LabelTitle3;
-lv_obj_t *ui_LabelMAVLink;
-lv_obj_t *ui_LabelSerialInfo;
-lv_obj_t *ui_LabelBatteryInfo;
-lv_obj_t *ui_LabelStatus;
+extern lv_obj_t *ui_Screen3;
+extern lv_obj_t *ui_Panel3;
+extern lv_obj_t *ui_LabelTitle3;
+extern lv_obj_t *ui_LabelMAVLink;
+extern lv_obj_t *ui_LabelSerialInfo;
+extern lv_obj_t *ui_LabelBatteryInfo;
+extern lv_obj_t *ui_LabelStatus;
 
 ///////////////////// FUNCTION PROTOTYPES ////////////////////
 void ui_Screen3_screen_init(void);
 void ui_Screen3_screen_destroy(void);
+void update_reboot_button_visibility(void);
+// GPS update function for Screen3
+void update_screen3_gps(int32_t lat, int32_t lon, int32_t alt, uint8_t satellites, uint8_t fix_type);
+
+// Raw serial data functions
+void ui_add_raw_serial_byte(uint8_t byte);
+void ui_update_raw_serial_display(void);
+void ui_clear_raw_serial_buffer(void);
 
 #ifdef __cplusplus
 } /*extern "C"*/

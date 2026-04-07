@@ -4,92 +4,134 @@
 // Project name: SquareLine_Project
 
 #include "../ui.h"
+#include "ui_Screen4.h"
+#include <Arduino.h>
 
 lv_obj_t *uic_Label5;
 lv_obj_t *uic_Switch1;
 lv_obj_t *uic_ImgButton2;
 lv_obj_t *uic_Screen1;
 lv_obj_t *ui_Screen1 = NULL;lv_obj_t *ui_ImgButton2 = NULL;lv_obj_t *ui_Spinner1 = NULL;lv_obj_t *ui_Switch1 = NULL;lv_obj_t *ui_Label1 = NULL;lv_obj_t *ui_Label5 = NULL;
+
+static lv_point_t ui_Screen1_press_point;
+static bool ui_Screen1_press_active = false;
+static uint32_t ui_Screen1_load_time = 0;
+
+static void ui_enable_gesture_bubble_recursive(lv_obj_t *parent) {
+    uint32_t child_count = lv_obj_get_child_cnt(parent);
+    for (uint32_t i = 0; i < child_count; i++) {
+        lv_obj_t *child = lv_obj_get_child(parent, i);
+        lv_obj_add_flag(child, LV_OBJ_FLAG_GESTURE_BUBBLE | LV_OBJ_FLAG_EVENT_BUBBLE);
+        ui_enable_gesture_bubble_recursive(child);
+    }
+}
+
 // event funtions
 void ui_event_Screen1( lv_event_t * e) {
     lv_event_code_t event_code = lv_event_get_code(e);
+    lv_indev_t *indev = lv_indev_get_act();
+    lv_point_t point;
 
-if ( event_code == LV_EVENT_GESTURE &&  lv_indev_get_gesture_dir(lv_indev_get_act()) == LV_DIR_RIGHT  ) {
-lv_indev_wait_release(lv_indev_get_act());
-      _ui_screen_change( &ui_Screen2, LV_SCR_LOAD_ANIM_FADE_OUT, 500, 0, &ui_Screen2_screen_init);
-}
+    if (!indev) return;
+    if ((lv_tick_get() - ui_Screen1_load_time) < 400) return;
+
+    if (event_code == LV_EVENT_PRESSED) {
+        lv_indev_get_point(indev, &ui_Screen1_press_point);
+        ui_Screen1_press_active = true;
+    }
+    if (event_code == LV_EVENT_PRESS_LOST) {
+        ui_Screen1_press_active = false;
+    }
+    if (event_code == LV_EVENT_RELEASED && ui_Screen1_press_active) {
+        int dx;
+        int dy;
+        ui_Screen1_press_active = false;
+        lv_indev_get_point(indev, &point);
+        dx = point.x - ui_Screen1_press_point.x;
+        dy = point.y - ui_Screen1_press_point.y;
+        if (LV_ABS(dy) > 40 && LV_ABS(dy) > LV_ABS(dx)) {
+            if (dy > 0) {
+                _ui_screen_change( &ui_Screen2, LV_SCR_LOAD_ANIM_MOVE_BOTTOM, 300, 0, &ui_Screen2_screen_init);
+            } else {
+                _ui_screen_change( &ui_Screen4, LV_SCR_LOAD_ANIM_MOVE_TOP, 300, 0, &ui_Screen4_screen_init);
+            }
+        }
+    }
 }
 
 // build funtions
 
 void ui_Screen1_screen_init(void)
 {
-ui_Screen1 = lv_obj_create(NULL);
-lv_obj_clear_flag( ui_Screen1, LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_SCROLL_ELASTIC | LV_OBJ_FLAG_SCROLL_MOMENTUM | LV_OBJ_FLAG_SCROLL_CHAIN );    /// Flags
-lv_obj_set_scroll_dir(ui_Screen1, LV_DIR_LEFT);
-lv_obj_set_scroll_snap_x(ui_Screen1, LV_SCROLL_SNAP_CENTER);
-lv_obj_set_scroll_snap_y(ui_Screen1, LV_SCROLL_SNAP_CENTER);
+    ui_Screen1 = lv_obj_create(NULL);
+    lv_obj_clear_flag( ui_Screen1, LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_SCROLL_ELASTIC | LV_OBJ_FLAG_SCROLL_MOMENTUM | LV_OBJ_FLAG_SCROLL_CHAIN );    /// Flags
 
-ui_ImgButton2 = lv_imgbtn_create(ui_Screen1);
-lv_imgbtn_set_src(ui_ImgButton2, LV_IMGBTN_STATE_RELEASED, NULL, &ui_img_ocix02_mono_png, NULL);
-lv_imgbtn_set_src(ui_ImgButton2, LV_IMGBTN_STATE_PRESSED, NULL, &ui_img_ocix01_c_png, NULL);
-lv_obj_set_width( ui_ImgButton2, 248);
-lv_obj_set_height( ui_ImgButton2, 246);
-lv_obj_set_x( ui_ImgButton2, 11 );
-lv_obj_set_y( ui_ImgButton2, -8 );
-lv_obj_set_align( ui_ImgButton2, LV_ALIGN_CENTER );
+    ui_ImgButton2 = lv_imgbtn_create(ui_Screen1);
+    lv_imgbtn_set_src(ui_ImgButton2, LV_IMGBTN_STATE_RELEASED, NULL, &ui_img_ocix02_mono_png, NULL);
+    lv_imgbtn_set_src(ui_ImgButton2, LV_IMGBTN_STATE_PRESSED, NULL, &ui_img_ocix01_c_png, NULL);
+    lv_obj_set_width( ui_ImgButton2, 248);
+    lv_obj_set_height( ui_ImgButton2, 246);
+    lv_obj_set_x( ui_ImgButton2, 11 );
+    lv_obj_set_y( ui_ImgButton2, -8 );
+    lv_obj_set_align( ui_ImgButton2, LV_ALIGN_CENTER );
+    lv_obj_add_flag( ui_ImgButton2, LV_OBJ_FLAG_GESTURE_BUBBLE );
 
-ui_Spinner1 = lv_spinner_create(ui_Screen1,1000,90);
-lv_obj_set_width( ui_Spinner1, 250);
-lv_obj_set_height( ui_Spinner1, 250);
-lv_obj_set_align( ui_Spinner1, LV_ALIGN_CENTER );
-lv_obj_clear_flag( ui_Spinner1, LV_OBJ_FLAG_CLICKABLE );    /// Flags
+    ui_Spinner1 = lv_spinner_create(ui_Screen1,1000,90);
+    lv_obj_set_width( ui_Spinner1, 250);
+    lv_obj_set_height( ui_Spinner1, 250);
+    lv_obj_set_align( ui_Spinner1, LV_ALIGN_CENTER );
+    lv_obj_clear_flag( ui_Spinner1, LV_OBJ_FLAG_CLICKABLE );    /// Flags
+    lv_obj_add_flag( ui_Spinner1, LV_OBJ_FLAG_GESTURE_BUBBLE );
 
-ui_Switch1 = lv_switch_create(ui_Screen1);
-lv_obj_set_width( ui_Switch1, 116);
-lv_obj_set_height( ui_Switch1, 25);
-lv_obj_set_x( ui_Switch1, 0 );
-lv_obj_set_y( ui_Switch1, 84 );
-lv_obj_set_align( ui_Switch1, LV_ALIGN_CENTER );
-lv_obj_add_state( ui_Switch1, LV_STATE_PRESSED );     /// States
+    ui_Switch1 = lv_switch_create(ui_Screen1);
+    lv_obj_set_width( ui_Switch1, 137);
+    lv_obj_set_height( ui_Switch1, 30);
+    lv_obj_set_x( ui_Switch1, 0 );
+    lv_obj_set_y( ui_Switch1, 80 );
+    lv_obj_set_align( ui_Switch1, LV_ALIGN_CENTER );
+    lv_obj_add_state( ui_Switch1, LV_STATE_PRESSED );     /// States
+    lv_obj_add_flag( ui_Switch1, LV_OBJ_FLAG_GESTURE_BUBBLE );
 
-ui_Label1 = lv_label_create(ui_Screen1);
-lv_obj_set_width( ui_Label1, LV_SIZE_CONTENT);  /// 1
-lv_obj_set_height( ui_Label1, LV_SIZE_CONTENT);   /// 1
-lv_obj_set_x( ui_Label1, -3 );
-lv_obj_set_y( ui_Label1, 84 );
-lv_obj_set_align( ui_Label1, LV_ALIGN_CENTER );
-lv_label_set_text(ui_Label1,"AirMobis");
-lv_obj_set_style_text_color(ui_Label1, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_CHECKED );
-lv_obj_set_style_text_opa(ui_Label1, 255, LV_PART_MAIN| LV_STATE_CHECKED);
+    ui_Label1 = lv_label_create(ui_Screen1);
+    lv_obj_set_width( ui_Label1, LV_SIZE_CONTENT);  /// 1
+    lv_obj_set_height( ui_Label1, LV_SIZE_CONTENT);   /// 1
+    lv_obj_set_x( ui_Label1, -3 );
+    lv_obj_set_y( ui_Label1, 80 );
+    lv_obj_set_align( ui_Label1, LV_ALIGN_CENTER );
+    lv_label_set_text(ui_Label1,"AirMobis");
+    lv_obj_set_style_text_color(ui_Label1, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_CHECKED );
+    lv_obj_set_style_text_opa(ui_Label1, 255, LV_PART_MAIN| LV_STATE_CHECKED);
+    lv_obj_add_flag( ui_Label1, LV_OBJ_FLAG_GESTURE_BUBBLE );
 
-ui_Label5 = lv_label_create(ui_Screen1);
-lv_obj_set_width( ui_Label5, LV_SIZE_CONTENT);  /// 1
-lv_obj_set_height( ui_Label5, LV_SIZE_CONTENT);   /// 1
-lv_obj_set_x( ui_Label5, -1 );
-lv_obj_set_y( ui_Label5, 55 );
-lv_obj_set_align( ui_Label5, LV_ALIGN_CENTER );
-lv_label_set_text(ui_Label5,"hh:mm:ss");
-lv_obj_set_style_text_color(ui_Label5, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_CHECKED );
-lv_obj_set_style_text_opa(ui_Label5, 255, LV_PART_MAIN| LV_STATE_CHECKED);
+    ui_Label5 = lv_label_create(ui_Screen1);
+    lv_obj_set_width( ui_Label5, LV_SIZE_CONTENT);  /// 1
+    lv_obj_set_height( ui_Label5, LV_SIZE_CONTENT);   /// 1
+    lv_obj_set_x( ui_Label5, -1 );
+    lv_obj_set_y( ui_Label5, 50 );
+    lv_obj_set_align( ui_Label5, LV_ALIGN_CENTER );
+    lv_label_set_text(ui_Label5,"hh:mm:ss");
+    lv_obj_set_style_text_color(ui_Label5, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_CHECKED );
+    lv_obj_set_style_text_opa(ui_Label5, 255, LV_PART_MAIN| LV_STATE_CHECKED);
+    lv_obj_add_flag( ui_Label5, LV_OBJ_FLAG_GESTURE_BUBBLE );
 
-lv_obj_add_event_cb(ui_Screen1, ui_event_Screen1, LV_EVENT_ALL, NULL);
-uic_Screen1 = ui_Screen1;
-uic_ImgButton2 = ui_ImgButton2;
-uic_Switch1 = ui_Switch1;
-uic_Label5 = ui_Label5;
+    lv_obj_add_event_cb(ui_Screen1, ui_event_Screen1, LV_EVENT_ALL, NULL);
+    ui_enable_gesture_bubble_recursive(ui_Screen1);
+    ui_Screen1_load_time = lv_tick_get();
 
+    uic_Screen1 = ui_Screen1;
+    uic_ImgButton2 = ui_ImgButton2;
+    uic_Switch1 = ui_Switch1;
+    uic_Label5 = ui_Label5;
 }
 
 void ui_Screen1_screen_destroy(void)
 {
-   if (ui_Screen1) lv_obj_del(ui_Screen1);
+    if (ui_Screen1) lv_obj_del(ui_Screen1);
 
 // NULL screen variables
 uic_Screen1= NULL;
 ui_Screen1= NULL;
 uic_ImgButton2= NULL;
-ui_ImgButton2= NULL;
 ui_Spinner1= NULL;
 uic_Switch1= NULL;
 ui_Switch1= NULL;
