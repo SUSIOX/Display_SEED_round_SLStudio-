@@ -69,10 +69,10 @@ void ui_Screen1_screen_init(void)
     ui_ImgButton2 = lv_imgbtn_create(ui_Screen1);
     lv_imgbtn_set_src(ui_ImgButton2, LV_IMGBTN_STATE_RELEASED, NULL, &ui_img_ocix02_mono_png, NULL);
     lv_imgbtn_set_src(ui_ImgButton2, LV_IMGBTN_STATE_PRESSED, NULL, &ui_img_ocix01_c_png, NULL);
-    lv_obj_set_width( ui_ImgButton2, 248);
-    lv_obj_set_height( ui_ImgButton2, 246);
-    lv_obj_set_x( ui_ImgButton2, 11 );
-    lv_obj_set_y( ui_ImgButton2, -8 );
+    lv_obj_set_width( ui_ImgButton2, 240);
+    lv_obj_set_height( ui_ImgButton2, 240);
+    lv_obj_set_x( ui_ImgButton2, 0 );
+    lv_obj_set_y( ui_ImgButton2, 0 );
     lv_obj_set_align( ui_ImgButton2, LV_ALIGN_CENTER );
     lv_obj_add_flag( ui_ImgButton2, LV_OBJ_FLAG_GESTURE_BUBBLE );
 
