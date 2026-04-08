@@ -41,6 +41,13 @@ private:
     
     // Convert MAVLink lat/lon to NMEA degrees.minutes format
     void formatNMEACoord(int32_t coord, char* buf, bool isLat);
+    
+    // KISS framing helpers
+    void kissWriteEscaped(uint8_t c);
+    void kissBeginFrame(uint8_t type);
+    void kissEndFrame();
+    void sendKissFrame(const char* data, size_t len);
+    void sendKissNMEASentence(const char* sentence, const char* prefix);
 };
 
 #endif // MESHCORE_TELEMETRY_H

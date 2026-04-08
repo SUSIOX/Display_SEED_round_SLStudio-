@@ -47,6 +47,6 @@ Pro připojení k flight controlleru:
 Součástí projektu je také integrace dedikovaného NMEA emulátoru, který odesílá GPS posici a události z MAVLinku do externího MeshCore Node modulu.
 
 - Komunikace: Sériová na **115200 baud** (RX/TX přes spodní JTAG pady)
-- RX: GPIO 41 (MTDI)
-- TX: GPIO 39 (MTCK)
+- RX: GPIO 41 (MTDI) purple
+- TX: GPIO 39 (MTCK) white
 - Podrobnosti o formátu: Viz `MESHCORE_PROTOCOL.md`

@@ -1,6 +1,13 @@
 #include "MeshCoreTelemetry.h"
 #include <stdio.h>
 
+// KISS Protocol Constants
+#define KISS_FEND  0xC0  // Frame End
+#define KISS_FESC  0xDB  // Frame Escape
+#define KISS_TFEND 0xDC  // Transposed Frame End
+#define KISS_TFESC 0xDD  // Transposed Frame Escape
+#define KISS_TYPE_DATA 0x00  // Data frame type
+
 MeshCoreTelemetry::MeshCoreTelemetry() : _serial(nullptr), _lastSendTime(0), _interval(3000) {
     _inputBuffer.reserve(32); // Pre-allocate for efficiency
 }
@@ -9,6 +16,50 @@ void MeshCoreTelemetry::begin(Stream* serial, uint32_t baud) {
     _serial = serial;
     // Note: The hardware serial instance (Serial2) should be initialized 
     // by the caller (main.cpp) before calling this.
+}
+
+// KISS Framing helpers
+void MeshCoreTelemetry::kissWriteEscaped(uint8_t c) {
+    if (c == KISS_FEND) {
+        _serial->write(KISS_FESC);
+        _serial->write(KISS_TFEND);
+    } else if (c == KISS_FESC) {
+        _serial->write(KISS_FESC);
+        _serial->write(KISS_TFESC);
+    } else {
+        _serial->write(c);
+    }
+}
+
+void MeshCoreTelemetry::kissBeginFrame(uint8_t type) {
+    if (!_serial) return;
+    _serial->write(KISS_FEND);
+    _serial->write(type);
+}
+
+void MeshCoreTelemetry::kissEndFrame() {
+    if (!_serial) return;
+    _serial->write(KISS_FEND);
+}
+
+void MeshCoreTelemetry::sendKissFrame(const char* data, size_t len) {
+    if (!_serial) return;
+    kissBeginFrame(KISS_TYPE_DATA);
+    for (size_t i = 0; i < len; i++) {
+        kissWriteEscaped(data[i]);
+    }
+    kissEndFrame();
+}
+
+void MeshCoreTelemetry::sendKissNMEASentence(const char* sentence, const char* prefix) {
+    if (!_serial) return;
+    
+    // Build full NMEA sentence with $ and checksum
+    char fullSentence[150];
+    uint8_t checksum = calculateChecksum(sentence);
+    snprintf(fullSentence, sizeof(fullSentence), "%s%s*%02X\r\n", prefix, sentence, checksum);
+    
+    sendKissFrame(fullSentence, strlen(fullSentence));
 }
 
 void MeshCoreTelemetry::handleSerialInput() {
@@ -22,14 +73,14 @@ void MeshCoreTelemetry::handleSerialInput() {
                 if (_inputBuffer.startsWith("!SET_INT:")) {
                     String valStr = _inputBuffer.substring(9);
                     uint32_t newInterval = valStr.toInt();
+                    char response[80];
                     if (newInterval >= 1000 && newInterval <= 300000) {
                         _interval = newInterval;
-                        _serial->print("# OK: Interval set to ");
-                        _serial->print(_interval);
-                        _serial->println("ms");
+                        snprintf(response, sizeof(response), "# OK: Interval set to %ums", _interval);
                     } else {
-                        _serial->println("# ERROR: Interval out of range (1000-300000ms)");
+                        strcpy(response, "# ERROR: Interval out of range (1000-300000ms)");
                     }
+                    sendKissFrame(response, strlen(response));
                 }
                 _inputBuffer = ""; // Clear for next command
             }
@@ -55,13 +106,8 @@ void MeshCoreTelemetry::sendHome(const MAVLinkData& data) {
     snprintf(sentence, sizeof(sentence), "GPHOME,%s,%s,%.1f", 
              latBuf, lonBuf, data.home_alt / 1000.0);
 
-    uint8_t checksum = calculateChecksum(sentence);
-    _serial->print("$");
-    _serial->print(sentence);
-    _serial->print("*");
-    if (checksum < 16) _serial->print("0");
-    _serial->println(checksum, HEX);
-    Serial.println("[MeshCore] Sent $GPHOME");
+    sendKissNMEASentence(sentence, "$");
+    Serial.println("[MeshCore] Sent $GPHOME (KISS)");
 }
 
 void MeshCoreTelemetry::sendTransition(const MAVLinkData& data) {
@@ -75,13 +121,8 @@ void MeshCoreTelemetry::sendTransition(const MAVLinkData& data) {
     snprintf(sentence, sizeof(sentence), "GPTRN,%s,%s,%.1f", 
              latBuf, lonBuf, data.gps_alt / 1000.0);
 
-    uint8_t checksum = calculateChecksum(sentence);
-    _serial->print("$");
-    _serial->print(sentence);
-    _serial->print("*");
-    if (checksum < 16) _serial->print("0");
-    _serial->println(checksum, HEX);
-    Serial.println("[MeshCore] Sent $GPTRN (VTOL Transition)");
+    sendKissNMEASentence(sentence, "$");
+    Serial.println("[MeshCore] Sent $GPTRN (VTOL Transition, KISS)");
 }
 
 void MeshCoreTelemetry::update(const MAVLinkData& data) {
@@ -114,12 +155,7 @@ void MeshCoreTelemetry::sendGPGGA(const MAVLinkData& data) {
         data.gps_satellites,
         data.gps_alt / 1000.0);
 
-    uint8_t checksum = calculateChecksum(sentence);
-    _serial->print("$");
-    _serial->print(sentence);
-    _serial->print("*");
-    if (checksum < 16) _serial->print("0");
-    _serial->println(checksum, HEX);
+    sendKissNMEASentence(sentence, "$");
 }
 
 void MeshCoreTelemetry::sendGPRMC(const MAVLinkData& data) {
@@ -137,12 +173,7 @@ void MeshCoreTelemetry::sendGPRMC(const MAVLinkData& data) {
         "GPRMC,%02d%02d%02d.00,A,%s,%s,0.0,%.1f,070426,,,A",
         hh, mm, ss, latBuf, lonBuf, (float)data.heading / 100.0f);
 
-    uint8_t checksum = calculateChecksum(sentence);
-    _serial->print("$");
-    _serial->print(sentence);
-    _serial->print("*");
-    if (checksum < 16) _serial->print("0");
-    _serial->println(checksum, HEX);
+    sendKissNMEASentence(sentence, "$");
 }
 
 uint8_t MeshCoreTelemetry::calculateChecksum(const char* s) {

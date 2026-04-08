@@ -999,8 +999,8 @@ void loop() {
             Serial.println("[POWER] Flight inactivity -> Blackout");
             set_power_state(true);
         } else if (!in_flight && inactivity_duration > UI_BLACKOUT_TIMEOUT_MS) {
-            Serial.println("[POWER] Ground inactivity -> Blackout");
-            set_power_state(true);
+            // Serial.println("[POWER] Ground inactivity -> Blackout");
+            // set_power_state(true);
         }
     }
 
