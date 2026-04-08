@@ -8,7 +8,7 @@
 // Display pins (SPI)
 #define TFT_CS          2   // D1
 #define TFT_DC          4   // D3
-#define TFT_BL          43  // D6 (on newer versions)
+#define TFT_BL          -1  // Hardware BL control disabled due to pin conflicts
 #define TFT_SCLK        7   // D8
 #define TFT_MOSI        9   // D10
 
@@ -41,8 +41,8 @@
 
 // Blackout (Power Saving) Settings
 #define UI_BLACKOUT_TIMEOUT_MS       300000  // 5 minutes inactivity (ground)
-#define UI_FLIGHT_BLACKOUT_TIMEOUT_MS 5000   // 5 seconds inactivity (flight)
-#define UI_LONG_PRESS_BLACKOUT_MS    5000    // 5 seconds long press on Home screen
+#define UI_FLIGHT_BLACKOUT_TIMEOUT_MS 3000   // 3 seconds inactivity (flight)
+#define UI_LONG_PRESS_BLACKOUT_MS    3000    // 3 seconds long press on Home screen
 
 // Flight Detection Thresholds
 #define FLIGHT_DETECTION_ALT_MM      5000    // 5 meters relative altitude

@@ -62,6 +62,7 @@ void my_disp_flush(lv_disp_drv_t *disp, const lv_area_t *area, lv_color_t *color
 // Power Management
 bool is_power_save = false;
 unsigned long touch_start_time = 0;
+unsigned long last_blackout_time = 0;
 
 bool is_in_flight() {
     bool flight = false;
@@ -83,16 +84,15 @@ void set_power_state(bool save_mode) {
     
     is_power_save = save_mode;
     if (save_mode) {
-        Serial.println("[POWER] Entering BLACKOUT mode");
-        digitalWrite(TFT_BL, LOW);           // Backlight OFF
+        Serial.println("[POWER] Entering BLACKOUT mode (Digital Sleep)");
+        last_blackout_time = millis();       // Record entry time
+        if (TFT_BL >= 0) digitalWrite(TFT_BL, LOW);
         tft.writecommand(0x10);              // Display SLEEP
-        setCpuFrequencyMhz(80);              // Reduce CPU frequency to 80MHz
     } else {
-        Serial.println("[POWER] Waking up to NORMAL mode");
-        setCpuFrequencyMhz(240);             // Restore CPU frequency
+        Serial.println("[POWER] Waking up to NORMAL mode (Digital Wake)");
         tft.writecommand(0x11);              // Display WAKEUP
         delay(120);                          // Required delay after sleep out
-        digitalWrite(TFT_BL, HIGH);          // Backlight ON
+        if (TFT_BL >= 0) digitalWrite(TFT_BL, HIGH);
         last_interaction_time = millis();    // Reset timer on wake
     }
 }
@@ -106,9 +106,11 @@ void my_touchpad_read(lv_indev_drv_t *indev_driver, lv_indev_data_t *data) {
     chsc6x_read(indev_driver, data);
     
     if (data->state == LV_INDEV_STATE_PR) {
-        // Wake up if in power save
+        // Wake up if in power save AND we didn't just enter it (500ms cooldown)
         if (is_power_save) {
-            set_power_state(false);
+            if (millis() - last_blackout_time > 500) {
+                set_power_state(false);
+            }
             data->state = LV_INDEV_STATE_REL; // Prevents accidental click on wake
             return;
         }
@@ -1002,12 +1004,13 @@ void loop() {
         }
     }
 
-    // LVGL timer handler - only update UI if not in blackout
-    if (!is_power_save) {
-        lv_timer_handler();
-        delay(5);
+    // LVGL timer handler - MUST run even in blackout to detect wake-up touch
+    lv_timer_handler();
+    
+    if (is_power_save) {
+        delay(30); // Reduced polling rate in blackout to save power
     } else {
-        delay(100); // Save processing in blackout
+        delay(5);
     }
     
     // Read ESP32 internal temperature every 5 seconds
