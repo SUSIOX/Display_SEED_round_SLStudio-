@@ -43,10 +43,11 @@ Pro připojení k flight controlleru:
 - TFT_BL: GPIO6
 - TOUCH_INT: GPIO44
 
-## MeshCore Telemetry (NMEA)
-Součástí projektu je také integrace dedikovaného NMEA emulátoru, který odesílá GPS posici a události z MAVLinku do externího MeshCore Node modulu.
+## MeshCore Telemetry (KISS)
+Součástí projektu je také integrace dedikovaného KISS framingu, který odesílá GPS posici a události z MAVLinku do externího MeshCore Node modulu (Heltec CT62 s KISS Modem firmware).
 
 - Komunikace: Sériová na **115200 baud** (RX/TX přes spodní JTAG pady)
 - RX: GPIO 41 (MTDI) purple
 - TX: GPIO 39 (MTCK) white
+- Protokol: KISS framing s NMEA payloadem
 - Podrobnosti o formátu: Viz `MESHCORE_PROTOCOL.md`
