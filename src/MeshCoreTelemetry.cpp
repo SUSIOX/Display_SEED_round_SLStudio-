@@ -8,7 +8,7 @@
 #define KISS_TFESC 0xDD  // Transposed Frame Escape
 #define KISS_TYPE_DATA 0x00  // Data frame type
 
-MeshCoreTelemetry::MeshCoreTelemetry() : _serial(nullptr), _lastSendTime(0), _interval(3000) {
+MeshCoreTelemetry::MeshCoreTelemetry() : _serial(nullptr), _lastSendTime(0), _interval(30000) {
     _inputBuffer.reserve(32); // Pre-allocate for efficiency
 }
 
