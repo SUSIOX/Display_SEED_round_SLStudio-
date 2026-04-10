@@ -65,15 +65,20 @@ Displej posílá GPS data ve výchozím režimu jako Geowork API JSON payload (K
 ### Režimy výstupu:
 
 #### A) Geowork JSON (výchozí, KISS type 0x01)
-JSON payload pro Geowork API `POST /user-location/report-location`:
+Minimální JSON payload optimalizovaný pro LoRa 10km dosah (~43 bajtů):
 
 ```json
-{"lat":48.2082304,"lng":16.3738002,"projectId":"PROJECT_ID_PLACEHOLDER","logLocation":true}
+{"lat":48.208230,"lng":16.373800,"l":1}
 ```
 
-- `lat`, `lng`: Desetinné stupně (WGS84)
-- `projectId`: Placeholder nahrazený pozemní stanicí skutečným ID
-- `logLocation`: Vždy `true` pro ukládání do historie trasy
+- `lat`, `lng`: Desetinné stupně (WGS84), 6 desetinných míst (~0.1m přesnost)
+- `l`: Zkrácený klíč pro `logLocation` (vždy `1`)
+- `projectId`: **Vynecháno** - pozemní stanice doplní před odesláním do Geowork API
+
+**Pozemní stanice musí před odesláním na API expandovat:**
+```json
+{"lat":48.208230,"lng":16.373800,"projectId":"<id>","logLocation":true}
+```
 
 #### B) NMEA 0183 (legacy mód, KISS type 0x00)
 Při kompilaci s `#define TELEMETRY_MODE_NMEA`:

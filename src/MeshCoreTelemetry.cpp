@@ -186,14 +186,16 @@ void MeshCoreTelemetry::sendGeoworkLocation(const MAVLinkData& data) {
     if (!_serial) return;
 
     // Convert MAVLink coordinates (degrees * 1e7) to decimal degrees
+    // 6 decimal places = ~0.1m accuracy, sufficient for drone tracking
     float lat = data.gps_lat / 1e7f;
     float lng = data.gps_lon / 1e7f;
 
-    // Build Geowork API JSON payload
-    char json[180];
+    // Minimal JSON payload (~43 bytes) optimized for LoRa 10km range
+    // Keys shortened: "l"=logLocation. projectId added by ground station.
+    char json[64];
     snprintf(json, sizeof(json),
-        "{\"lat\":%.7f,\"lng\":%.7f,\"projectId\":\"%s\",\"logLocation\":true}",
-        lat, lng, GEOWORK_PROJECT_ID_PLACEHOLDER);
+        "{\"lat\":%.6f,\"lng\":%.6f,\"l\":1}",
+        lat, lng);
 
     // Send as KISS frame with type 0x01 (Geowork JSON)
     kissBeginFrame(KISS_TYPE_GEOWORK);
@@ -202,7 +204,7 @@ void MeshCoreTelemetry::sendGeoworkLocation(const MAVLinkData& data) {
     }
     kissEndFrame();
 
-    Serial.println("[MeshCore] Sent Geowork JSON (KISS type 0x01)");
+    Serial.printf("[MeshCore] Sent Geowork JSON %u bytes (KISS type 0x01)\n", (unsigned)strlen(json));
 }
 
 uint8_t MeshCoreTelemetry::calculateChecksum(const char* s) {

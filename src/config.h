@@ -61,7 +61,4 @@
 // Uncomment to use legacy NMEA format instead (KISS frame type 0x00)
 // #define TELEMETRY_MODE_NMEA
 
-// Geowork projectId placeholder (replaced by ground station)
-#define GEOWORK_PROJECT_ID_PLACEHOLDER "PROJECT_ID_PLACEHOLDER"
-
 #endif // CONFIG_H
