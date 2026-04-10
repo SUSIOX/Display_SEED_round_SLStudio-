@@ -46,8 +46,24 @@ Pro připojení k flight controlleru:
 ## MeshCore Telemetry (KISS)
 Součástí projektu je také integrace dedikovaného KISS framingu, který odesílá GPS pozici a události z MAVLinku do externího MeshCore Node modulu (Heltec CT62 s KISS Modem firmware).
 
+### Výchozí režim: Geowork API JSON
+Výchozí formát pro pozemní stanici s přímou integrací na Geowork API:
+
 - Komunikace: Sériová na **115200 baud** (RX/TX přes spodní JTAG pady)
 - RX: GPIO 41 (MTDI) purple
 - TX: GPIO 39 (MTCK) white
-- Protokol: KISS framing s NMEA payloadem
-- Podrobnosti o formátu: Viz `MESHCORE_PROTOCOL.md`
+- **KISS Frame Type: 0x01** (Geowork JSON payload)
+- Formát: `{"lat":48.2082,"lng":16.3738,"projectId":"PROJECT_ID_PLACEHOLDER","logLocation":true}`
+- Pozemní stanice nahradí `PROJECT_ID_PLACEHOLDER` skutečným projectId a pošle na Geowork API
+
+### Legacy režim: NMEA 0183
+Pro starší integrace odkomentujte v `config.h`:
+```cpp
+#define TELEMETRY_MODE_NMEA
+```
+
+- **KISS Frame Type: 0x00** (NMEA věty)
+- Podporované věty: `$GPGGA`, `$GPRMC`, `$GPHOME`, `$GPTRN`
+
+### Dokumentace
+Podrobnosti o formátu: Viz `MESHCORE_PROTOCOL.md`
