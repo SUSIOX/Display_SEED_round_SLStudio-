@@ -34,9 +34,10 @@ Všechna data jsou posílana v KISS framech dle standardu KA9Q/K3MC.
 - Ostatní bajty → poslat přímo
 
 ### Type Byte:
-- **0x00** - Data frame (NMEA telemetrie)
+- **0x00** - Data frame (NMEA telemetrie - legacy mód)
+- **0x01** - Geowork JSON payload (výchozí mód)
 
-### Příklad KISS frame s $GPGGA:
+### Příklad KISS frame s $GPGGA (Type 0x00):
 ```
 C0 00 24 47 50 47 47 41 ... 0D 0A C0
 ^  ^  ^ NMEA text ($GPGGA...)     ^
@@ -45,14 +46,38 @@ C0 00 24 47 50 47 47 41 ... 0D 0A C0
 └ FEND (začátek)
 ```
 
+### Příklad KISS frame s Geowork JSON (Type 0x01):
+```
+C0 01 7B 22 6C 61 74 22 ... 7D C0
+^  ^  ^ JSON text {"lat":...}   ^
+|  |  └ JSON payload              |
+|  └ Type=0x01                    └ FEND (konec)
+└ FEND (začátek)
+```
+
 ## 3. Telemetrie (Displej -> MeshCore)
-Displej posílá GPS data ve formátu NMEA 0183 zabaleném v KISS framech. MeshCore KISS Modem automaticky forwarduje payload do LoRa sítě jako textovou zprávu.
+Displej posílá GPS data ve výchozím režimu jako Geowork API JSON payload (KISS type 0x01), nebo v legacy módu jako NMEA 0183 věty (KISS type 0x00). MeshCore KISS Modem forwarduje payload do LoRa sítě jako textovou zprávu.
 
 **Firmware MeshCore:** `KISS Modem` (meshcore.co.uk/flasher.html - Heltec CT62)
 **Zapojení:** Display TX (GPIO39) → Heltec RX (GPIO20)
 **Baudrate:** 115200 8N1
 
-### Podporované věty:
+### Režimy výstupu:
+
+#### A) Geowork JSON (výchozí, KISS type 0x01)
+JSON payload pro Geowork API `POST /user-location/report-location`:
+
+```json
+{"lat":48.2082304,"lng":16.3738002,"projectId":"PROJECT_ID_PLACEHOLDER","logLocation":true}
+```
+
+- `lat`, `lng`: Desetinné stupně (WGS84)
+- `projectId`: Placeholder nahrazený pozemní stanicí skutečným ID
+- `logLocation`: Vždy `true` pro ukládání do historie trasy
+
+#### B) NMEA 0183 (legacy mód, KISS type 0x00)
+Při kompilaci s `#define TELEMETRY_MODE_NMEA`:
+
 1. **$GPGGA**: Standardní pozice, nadmořská výška, počet satelitů a kvalita fixu.
 2. **$GPRMC**: Standardní pozice, čas, rychlost a kurz (Heading).
 3. **$GPHOME**: Home pozice (Take-off). Odesílá se automaticky v momentě, kdy autopilot nastaví Home.

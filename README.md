@@ -44,7 +44,7 @@ Pro připojení k flight controlleru:
 - TOUCH_INT: GPIO44
 
 ## MeshCore Telemetry (KISS)
-Součástí projektu je také integrace dedikovaného KISS framingu, který odesílá GPS posici a události z MAVLinku do externího MeshCore Node modulu (Heltec CT62 s KISS Modem firmware).
+Součástí projektu je také integrace dedikovaného KISS framingu, který odesílá GPS pozici a události z MAVLinku do externího MeshCore Node modulu (Heltec CT62 s KISS Modem firmware).
 
 - Komunikace: Sériová na **115200 baud** (RX/TX přes spodní JTAG pady)
 - RX: GPIO 41 (MTDI) purple

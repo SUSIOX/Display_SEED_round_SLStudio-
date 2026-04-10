@@ -127,11 +127,17 @@ void MeshCoreTelemetry::sendTransition(const MAVLinkData& data) {
 
 void MeshCoreTelemetry::update(const MAVLinkData& data) {
     if (!_serial || !data.data_valid) return;
-    
+
     unsigned long currentTime = millis();
     if (currentTime - _lastSendTime >= _interval) {
+#ifdef TELEMETRY_MODE_NMEA
+        // Legacy NMEA format
         sendGPGGA(data);
         sendGPRMC(data);
+#else
+        // Default: Geowork JSON format
+        sendGeoworkLocation(data);
+#endif
         _lastSendTime = currentTime;
     }
 }
@@ -169,11 +175,34 @@ void MeshCoreTelemetry::sendGPRMC(const MAVLinkData& data) {
     int ss = seconds % 60;
 
     char sentence[120];
-    snprintf(sentence, sizeof(sentence), 
+    snprintf(sentence, sizeof(sentence),
         "GPRMC,%02d%02d%02d.00,A,%s,%s,0.0,%.1f,070426,,,A",
         hh, mm, ss, latBuf, lonBuf, (float)data.heading / 100.0f);
 
     sendKissNMEASentence(sentence, "$");
+}
+
+void MeshCoreTelemetry::sendGeoworkLocation(const MAVLinkData& data) {
+    if (!_serial) return;
+
+    // Convert MAVLink coordinates (degrees * 1e7) to decimal degrees
+    float lat = data.gps_lat / 1e7f;
+    float lng = data.gps_lon / 1e7f;
+
+    // Build Geowork API JSON payload
+    char json[180];
+    snprintf(json, sizeof(json),
+        "{\"lat\":%.7f,\"lng\":%.7f,\"projectId\":\"%s\",\"logLocation\":true}",
+        lat, lng, GEOWORK_PROJECT_ID_PLACEHOLDER);
+
+    // Send as KISS frame with type 0x01 (Geowork JSON)
+    kissBeginFrame(KISS_TYPE_GEOWORK);
+    for (size_t i = 0; i < strlen(json); i++) {
+        kissWriteEscaped(json[i]);
+    }
+    kissEndFrame();
+
+    Serial.println("[MeshCore] Sent Geowork JSON (KISS type 0x01)");
 }
 
 uint8_t MeshCoreTelemetry::calculateChecksum(const char* s) {

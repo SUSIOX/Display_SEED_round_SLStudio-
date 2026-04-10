@@ -54,4 +54,14 @@
 #define MOTOR_TEST_DURATION_MS   5000    // Duration of motor test pulse
 #define MOTOR_TEST_THROTTLE_PCT  10      // Power level for motor test
 
+// ==========================================
+// TELEMETRY OUTPUT MODE
+// ==========================================
+// Default is Geowork JSON format (KISS frame type 0x01)
+// Uncomment to use legacy NMEA format instead (KISS frame type 0x00)
+// #define TELEMETRY_MODE_NMEA
+
+// Geowork projectId placeholder (replaced by ground station)
+#define GEOWORK_PROJECT_ID_PLACEHOLDER "PROJECT_ID_PLACEHOLDER"
+
 #endif // CONFIG_H

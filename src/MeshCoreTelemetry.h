@@ -32,9 +32,14 @@ private:
     uint32_t _interval; // Interval in milliseconds
     String _inputBuffer; // Accumulator for incoming serial data
 
-    // Helper functions for NMEA generation
+    // Helper functions for telemetry generation
     void sendGPGGA(const MAVLinkData& data);
     void sendGPRMC(const MAVLinkData& data);
+    void sendGeoworkLocation(const MAVLinkData& data);
+
+    // KISS Frame Types
+    static constexpr uint8_t KISS_TYPE_NMEA = 0x00;
+    static constexpr uint8_t KISS_TYPE_GEOWORK = 0x01;
     
     // Calculate NMEA checksum
     uint8_t calculateChecksum(const char* s);
