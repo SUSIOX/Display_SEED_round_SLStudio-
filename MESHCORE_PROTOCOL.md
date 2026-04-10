@@ -96,7 +96,7 @@ Změní frekvenci, se kterou displej posílá periodické NMEA věty ($GPGGA, $G
 - **Příkaz**: `!SET_INT:[ms]`
 - **Příklad**: `!SET_INT:300000` (změní na 5 minut)
 - **Rozsah**: 1000 - 300000 ms (1 sekunda až 5 minut).
-- **Default**: 30000 ms (30 sekund).
+- **Default**: 60000 ms (60 sekund) - synchronizováno s Geowork API limitem.
 
 ---
 
